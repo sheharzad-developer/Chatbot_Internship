@@ -563,7 +563,7 @@
             try {
                 const endpoint = currentAgent === 'gemini' ? '/chat/gemini' : '/chat';
                 
-                const response = await fetch(`http://localhost:8001${endpoint}`, {
+                const response = await fetch(`http://localhost:8000${endpoint}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -610,7 +610,7 @@
             statusDisplay.className = 'status-display loading';
 
             try {
-                const response = await fetch('http://localhost:8001/health');
+                const response = await fetch('http://localhost:8000/health');
                 
                 if (response.ok) {
                     const data = await response.json();
@@ -656,7 +656,7 @@
             historyList.innerHTML = '<div class="loading">Loading chat history...</div>';
             
             try {
-                const response = await fetch('http://localhost:8001/chat/history?limit=10');
+                const response = await fetch('http://localhost:8000/chat/history?limit=10');
                 
                 if (response.ok) {
                     const data = await response.json();
@@ -701,7 +701,7 @@
 
         async function loadChatSession(sessionIdToLoad, historyItemElement) {
             try {
-                const response = await fetch(`http://localhost:8001/chat/session/${sessionIdToLoad}`);
+                const response = await fetch(`http://localhost:8000/chat/session/${sessionIdToLoad}`);
                 
                 if (response.ok) {
                     const sessionData = await response.json();
