@@ -1,15 +1,16 @@
 # Reflect Agent Chatbot
 
-A sophisticated chatbot built with FastAPI featuring a Reflect Agent with conditional edges, RAG (Retrieval-Augmented Generation), Tavily web search, MongoDB chat history, and Langfuse observability.
+A sophisticated chatbot built with FastAPI featuring a Reflect Agent with conditional edges, RAG (Retrieval-Augmented Generation), Tavily web search, MongoDB chat history, Langfuse observability, and a **beautiful Gradio web interface**.
 
 ## Features
 
 - 🤖 **Reflect Agent** with conditional edges using LangGraph
-- 🔍 **RAG System** with document chunking and vector search (FAISS + Sentence Transformers)
+- 🔍 **RAG System** with document chunking and vector search (sklearn + Sentence Transformers)
 - 🌐 **Tavily Web Search** for real-time information
 - 💬 **Chat History** stored in MongoDB
 - 📊 **Langfuse Integration** for observability and tracing
 - 🚀 **FastAPI** with comprehensive REST API
+- 🎨 **Gradio Frontend** - Beautiful web interface
 - 🔒 **Environment Variables** for secure configuration
 
 ## Project Structure
@@ -25,6 +26,9 @@ chatbot/
 ├── database/
 │   ├── __init__.py
 │   └── mongodb.py           # MongoDB operations
+├── frontend/
+│   ├── __init__.py
+│   └── gradio_app.py        # Gradio web interface
 ├── models/
 │   ├── __init__.py
 │   └── chat.py             # Pydantic models
@@ -33,6 +37,8 @@ chatbot/
 │   ├── rag_service.py      # RAG with chunking and vector search
 │   └── tavily_search.py    # Tavily web search service
 ├── main.py                 # FastAPI application
+├── run.py                  # FastAPI startup script
+├── run_frontend.py         # Gradio frontend launcher
 ├── requirements.txt        # Python dependencies
 ├── .env.example           # Environment variables template
 ├── .gitignore            # Git ignore rules
@@ -49,7 +55,7 @@ chatbot/
 
 2. **Create virtual environment:**
    ```bash
-   python -m venv venv
+   python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
@@ -64,65 +70,47 @@ chatbot/
    # Edit .env with your actual API keys and credentials
    ```
 
-## Environment Variables
-
-Copy `.env.example` to `.env` and fill in your credentials:
-
-```bash
-# MongoDB Configuration
-MONGODB_URL=your_mongodb_connection_string
-
-# Tavily API Configuration
-TAVILY_API_KEY=your_tavily_api_key
-
-# Langfuse Configuration
-LANGFUSE_SECRET_KEY=your_langfuse_secret_key
-LANGFUSE_PUBLIC_KEY=your_langfuse_public_key
-LANGFUSE_HOST=https://cloud.langfuse.com
-
-# Google AI Configuration
-GOOGLE_AI_GENERATIVE=your_google_ai_api_key
-
-# XAI Configuration (optional)
-XAI_API_KEY=your_xai_api_key
-```
-
 ## Usage
 
-1. **Start the server:**
-   ```bash
-   python main.py
-   ```
-   
-   Or with uvicorn:
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-   ```
+### 🎨 **Option 1: Web Interface (Recommended)**
 
-2. **Access the API:**
-   - API Documentation: http://localhost:8000/docs
-   - API Base URL: http://localhost:8000
+```bash
+# Start the beautiful Gradio web interface
+python3 run_frontend.py
+```
 
-## API Endpoints
+This will:
+- ✅ Check if the backend is running (auto-start if needed)
+- 🌐 Launch the web interface at http://localhost:7860
+- 📱 Open your browser automatically
 
-### Chat Endpoints
+**Features of the Web Interface:**
+- 💬 **Chat Tab**: Conversational interface with your reflect agent
+- 📚 **Document Management**: Add documents and search RAG system
+- 📊 **System Status**: Health checks and chat history
+- 🎯 **User-Friendly**: No need for curl commands!
 
-- `POST /chat` - Send a message to the chatbot
-- `GET /chat/history` - Get chat history (all sessions or by user_id)
-- `GET /chat/session/{session_id}` - Get specific chat session
-- `DELETE /chat/session/{session_id}` - Delete chat session
+### ⚙️ **Option 2: API Only**
 
-### RAG Endpoints
+```bash
+# 1. Start the backend API
+python3 run.py
+# or
+python3 main.py
 
-- `POST /rag/add-document` - Add document to RAG system
-- `POST /rag/upload-file` - Upload text file to RAG system
-- `GET /rag/search` - Search documents in RAG system
-- `GET /rag/stats` - Get RAG system statistics
+# 2. Access API documentation
+# Visit: http://localhost:8000/docs
+```
 
-### System Endpoints
+## Access Points
 
-- `GET /` - Root endpoint with basic info
-- `GET /health` - Health check endpoint
+### 🎨 **Web Interface** (Main Access)
+- **Gradio Frontend**: http://localhost:7860
+
+### 🔧 **API Endpoints**
+- **API Documentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+- **Alternative Docs**: http://localhost:8000/redoc
 
 ## How It Works
 
@@ -145,7 +133,7 @@ The agent **doesn't always follow** the thought→action→observation pattern. 
 
 - **Document Chunking**: Uses tiktoken to split documents into manageable chunks
 - **Vector Embeddings**: Uses Sentence Transformers (all-MiniLM-L6-v2)
-- **Vector Search**: FAISS for fast similarity search
+- **Vector Search**: sklearn NearestNeighbors for fast similarity search
 - **Persistence**: Saves index and metadata to disk
 
 ### Services Integration
@@ -154,24 +142,25 @@ The agent **doesn't always follow** the thought→action→observation pattern. 
 - **MongoDB**: Persistent chat history storage
 - **Langfuse**: Observability and tracing for debugging and monitoring
 
-## Example Usage
+## Quick Test
 
-### Chat with the bot:
+### 🎨 **Via Web Interface:**
+1. Run `python3 run_frontend.py`
+2. Open http://localhost:7860
+3. Start chatting in the web interface!
+
+### 🔧 **Via API:**
 ```bash
+# Chat with the bot
 curl -X POST "http://localhost:8000/chat" \
      -H "Content-Type: application/json" \
      -d '{"message": "What is the latest news about AI?"}'
-```
 
-### Add a document to RAG:
-```bash
+# Add a document to RAG
 curl -X POST "http://localhost:8000/rag/add-document" \
-     -H "Content-Type: application/json" \
-     -d '{"content": "Your document content here", "title": "My Document"}'
-```
+     -d "content=Your document content here&title=My Document"
 
-### Search documents:
-```bash
+# Search documents
 curl -X GET "http://localhost:8000/rag/search?query=your search query"
 ```
 
@@ -185,6 +174,7 @@ The project follows best practices:
 - **Error Handling**: Comprehensive error handling
 - **Logging**: Structured logging throughout
 - **Type Hints**: Full type annotation
+- **Beautiful UI**: User-friendly Gradio interface
 - **Documentation**: Comprehensive API docs
 
 ## Monitoring
@@ -192,9 +182,10 @@ The project follows best practices:
 The system includes observability through:
 
 - **Langfuse Tracing**: Track agent reasoning and performance
-- **Health Checks**: Monitor system status
+- **Health Checks**: Monitor system status via web UI or API
 - **Structured Logging**: Debug and monitor operations
 - **RAG Statistics**: Track document and search metrics
+- **Web Dashboard**: Real-time system status in Gradio
 
 ## Contributing
 

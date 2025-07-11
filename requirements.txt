@@ -17,4 +17,5 @@ aiofiles==23.2.1
 tiktoken==0.7.0
 numpy==1.26.4
 scikit-learn==1.7.0
-sentence-transformers==3.0.1 
+sentence-transformers==3.0.1
+gradio==4.15.0 
