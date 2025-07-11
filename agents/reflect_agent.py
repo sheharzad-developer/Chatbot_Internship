@@ -55,7 +55,7 @@ class ReflectAgent:
         workflow.add_node("think", self._think_node)
         workflow.add_node("act", self._act_node)
         workflow.add_node("observe", self._observe_node)
-        workflow.add_node("final_answer", self._final_answer_node)
+        workflow.add_node("respond", self._final_answer_node)
         
         # Set entry point
         workflow.set_entry_point("think")
@@ -66,7 +66,7 @@ class ReflectAgent:
             self._should_continue,
             {
                 "act": "act",
-                "final_answer": "final_answer"
+                "final_answer": "respond"
             }
         )
         
@@ -78,11 +78,11 @@ class ReflectAgent:
             self._should_continue_after_observation,
             {
                 "think": "think",
-                "final_answer": "final_answer"
+                "final_answer": "respond"
             }
         )
         
-        workflow.add_edge("final_answer", END)
+        workflow.add_edge("respond", END)
         
         return workflow.compile()
     
