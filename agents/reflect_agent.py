@@ -3,9 +3,7 @@ from typing import Dict, Any, Optional, List, Literal
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
-from langgraph.graph.state import CompiledStateGraph
 from langfuse import Langfuse
-from langfuse.decorators import observe
 from tavily import TavilyClient
 
 from config.settings import settings
@@ -31,7 +29,7 @@ class ReflectAgent:
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-pro",
-            google_api_key=settings.google_ai_api_key,
+            google_api_key=settings.google_ai_generative,
             temperature=0.7
         )
         
@@ -49,7 +47,7 @@ class ReflectAgent:
         # Build the graph
         self.graph = self._build_graph()
     
-    def _build_graph(self) -> CompiledStateGraph:
+    def _build_graph(self):
         """Build the LangGraph with conditional edges"""
         workflow = StateGraph(AgentState)
         
@@ -88,7 +86,6 @@ class ReflectAgent:
         
         return workflow.compile()
     
-    @observe(name="think_node")
     def _think_node(self, state: AgentState) -> AgentState:
         """Thinking node - analyze the situation and decide what to do"""
         logger.info("Entering think node")
@@ -154,7 +151,6 @@ class ReflectAgent:
         
         return state
     
-    @observe(name="act_node")
     def _act_node(self, state: AgentState) -> AgentState:
         """Action node - perform the decided action"""
         logger.info("Entering act node")
@@ -180,7 +176,6 @@ class ReflectAgent:
         
         return state
     
-    @observe(name="observe_node")
     def _observe_node(self, state: AgentState) -> AgentState:
         """Observation node - process the results of the action"""
         logger.info("Entering observe node")
@@ -191,7 +186,6 @@ class ReflectAgent:
         
         return state
     
-    @observe(name="final_answer_node")
     def _final_answer_node(self, state: AgentState) -> AgentState:
         """Generate the final answer"""
         logger.info("Entering final answer node")
@@ -252,7 +246,6 @@ class ReflectAgent:
         # This can be made more sophisticated based on the observation
         return "final_answer"
     
-    @observe(name="reflect_agent_run")
     async def run(self, message: str, session_id: Optional[str] = None) -> str:
         """Run the reflect agent"""
         logger.info(f"Running reflect agent for message: {message}")

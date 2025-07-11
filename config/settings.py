@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 # Load environment variables
 load_dotenv()
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     langfuse_host: str = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
     
     # Google AI Configuration
-    google_ai_api_key: str = os.getenv("GOOGLE_AI_GENERATIVE", "")
+    google_ai_generative: str = os.getenv("GOOGLE_AI_GENERATIVE", "")
     
     # XAI Configuration
     xai_api_key: str = os.getenv("XAI_API_KEY", "")
@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        extra = "ignore"  # Allow extra fields without validation errors
 
 # Create global settings instance
 settings = Settings() 

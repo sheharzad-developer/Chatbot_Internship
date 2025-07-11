@@ -4,7 +4,8 @@ import pickle
 from typing import List, Dict, Any, Optional
 import numpy as np
 from sentence_transformers import SentenceTransformer
-import faiss
+from sklearn.neighbors import NearestNeighbors
+from sklearn.metrics.pairwise import cosine_similarity
 import tiktoken
 from pathlib import Path
 
@@ -29,8 +30,9 @@ class RAGService:
         self.chunks = []
         self.chunk_metadata = []
         
-        # Vector index
+        # Vector index using sklearn
         self.index = None
+        self.embeddings = None
         
         # Load existing index if available
         self._load_index()
@@ -72,26 +74,29 @@ class RAGService:
     def search(self, query: str, top_k: int = 5) -> str:
         """Search for relevant documents"""
         try:
-            if not self.chunks or self.index is None:
+            if not self.chunks or self.index is None or self.embeddings is None:
                 return "No documents available for search."
             
             logger.info(f"Searching RAG system for: {query}")
             
             # Embed the query
             query_embedding = self.embedding_model.encode([query])
-            query_embedding = np.array(query_embedding).astype('float32')
+            query_embedding = np.array(query_embedding).reshape(1, -1)
             
-            # Search the index
-            scores, indices = self.index.search(query_embedding, top_k)
+            # Find nearest neighbors
+            distances, indices = self.index.kneighbors(query_embedding, n_neighbors=min(top_k, len(self.chunks)))
+            
+            # Calculate cosine similarities for scoring
+            similarities = cosine_similarity(query_embedding, self.embeddings[indices[0]])[0]
             
             # Format results
             results = []
-            for i, (score, idx) in enumerate(zip(scores[0], indices[0])):
+            for i, (idx, similarity) in enumerate(zip(indices[0], similarities)):
                 if idx < len(self.chunks):
                     chunk = self.chunks[idx]
                     metadata = self.chunk_metadata[idx]
                     
-                    result = f"{i+1}. (Score: {score:.3f})\n{chunk}"
+                    result = f"{i+1}. (Similarity: {similarity:.3f})\n{chunk}"
                     if metadata.get("document_metadata"):
                         result += f"\nMetadata: {metadata['document_metadata']}"
                     
@@ -139,7 +144,7 @@ class RAGService:
             return [content]  # Return original content if chunking fails
     
     def _update_index(self) -> None:
-        """Update the FAISS vector index"""
+        """Update the sklearn vector index"""
         try:
             if not self.chunks:
                 return
@@ -148,19 +153,17 @@ class RAGService:
             
             # Generate embeddings for all chunks
             embeddings = self.embedding_model.encode(self.chunks)
-            embeddings = np.array(embeddings).astype('float32')
+            self.embeddings = np.array(embeddings).astype('float32')
             
-            # Create or update FAISS index
-            if self.index is None:
-                self.index = faiss.IndexFlatIP(self.embedding_dim)  # Inner product for similarity
-            else:
-                self.index.reset()
+            # Create sklearn NearestNeighbors index
+            self.index = NearestNeighbors(
+                n_neighbors=min(10, len(self.chunks)),
+                metric='cosine',
+                algorithm='brute'  # Use brute force for better accuracy with cosine similarity
+            )
             
-            # Normalize embeddings for cosine similarity
-            faiss.normalize_L2(embeddings)
-            
-            # Add embeddings to index
-            self.index.add(embeddings)
+            # Fit the index with embeddings
+            self.index.fit(self.embeddings)
             
             # Save index
             self._save_index()
@@ -173,9 +176,15 @@ class RAGService:
     def _save_index(self) -> None:
         """Save the vector index and metadata"""
         try:
-            # Save FAISS index
-            index_file = self.index_path / "faiss_index.bin"
-            faiss.write_index(self.index, str(index_file))
+            # Save sklearn index and embeddings
+            index_file = self.index_path / "sklearn_index.pkl"
+            embeddings_file = self.index_path / "embeddings.npy"
+            
+            with open(index_file, 'wb') as f:
+                pickle.dump(self.index, f)
+            
+            if self.embeddings is not None:
+                np.save(embeddings_file, self.embeddings)
             
             # Save metadata
             metadata_file = self.index_path / "metadata.pkl"
@@ -194,12 +203,18 @@ class RAGService:
     def _load_index(self) -> None:
         """Load existing vector index and metadata"""
         try:
-            index_file = self.index_path / "faiss_index.bin"
+            index_file = self.index_path / "sklearn_index.pkl"
+            embeddings_file = self.index_path / "embeddings.npy"
             metadata_file = self.index_path / "metadata.pkl"
             
             if index_file.exists() and metadata_file.exists():
-                # Load FAISS index
-                self.index = faiss.read_index(str(index_file))
+                # Load sklearn index
+                with open(index_file, 'rb') as f:
+                    self.index = pickle.load(f)
+                
+                # Load embeddings
+                if embeddings_file.exists():
+                    self.embeddings = np.load(embeddings_file)
                 
                 # Load metadata
                 with open(metadata_file, 'rb') as f:
@@ -236,5 +251,6 @@ class RAGService:
         return {
             "total_documents": len(self.documents),
             "total_chunks": len(self.chunks),
-            "index_size": self.index.ntotal if self.index else 0
+            "index_size": len(self.chunks) if self.index else 0,
+            "embeddings_shape": self.embeddings.shape if self.embeddings is not None else None
         } 
