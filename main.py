@@ -1,14 +1,15 @@
 import logging
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Query, Form
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from config.settings import settings
 from models.chat import ChatRequest, ChatResponse, ChatHistoryResponse, MessageRole
 from database.mongodb import db
-from agents.reflect_agent import ReflectAgent
+from agents.simple_agent import SimpleAgent
+from agents.gemini_agent import GeminiAgent
 from services.rag_service import RAGService
 
 # Configure logging
@@ -19,13 +20,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Global instances
-reflect_agent = None
+simple_agent = None
+gemini_agent = None
 rag_service = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown logic"""
-    global reflect_agent, rag_service
+    global simple_agent, gemini_agent, rag_service
     
     # Startup
     logger.info("Starting up the application...")
@@ -35,7 +37,8 @@ async def lifespan(app: FastAPI):
         await db.connect()
         
         # Initialize services
-        reflect_agent = ReflectAgent()
+        simple_agent = SimpleAgent()
+        gemini_agent = GeminiAgent()
         rag_service = RAGService()
         
         # Add sample document to RAG (optional)
@@ -80,10 +83,15 @@ app.add_middleware(
 )
 
 # Dependency to get services
-def get_reflect_agent() -> ReflectAgent:
-    if reflect_agent is None:
-        raise HTTPException(status_code=500, detail="Reflect agent not initialized")
-    return reflect_agent
+def get_simple_agent() -> SimpleAgent:
+    if simple_agent is None:
+        raise HTTPException(status_code=500, detail="Simple agent not initialized")
+    return simple_agent
+
+def get_gemini_agent() -> GeminiAgent:
+    if gemini_agent is None:
+        raise HTTPException(status_code=500, detail="Gemini agent not initialized")
+    return gemini_agent
 
 def get_rag_service() -> RAGService:
     if rag_service is None:
@@ -114,7 +122,8 @@ async def health_check():
             "mongodb": "connected",
             "rag_system": rag_stats,
             "services": {
-                "reflect_agent": reflect_agent is not None,
+                "simple_agent": simple_agent is not None,
+                "gemini_agent": gemini_agent is not None,
                 "rag_service": rag_service is not None
             }
         }
@@ -125,7 +134,7 @@ async def health_check():
 @app.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
-    agent: ReflectAgent = Depends(get_reflect_agent)
+    agent: SimpleAgent = Depends(get_simple_agent)
 ):
     """Main chat endpoint"""
     try:
@@ -159,12 +168,145 @@ async def chat(
         return ChatResponse(
             response=response,
             session_id=session_id,
-            metadata={"agent_type": "reflect_agent"}
+            metadata={"agent_type": "simple_agent"}
         )
         
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
+
+@app.post("/chat/gemini", response_model=ChatResponse)
+async def chat_gemini(
+    request: ChatRequest,
+    agent: GeminiAgent = Depends(get_gemini_agent)
+):
+    """Chat endpoint using Google Gemini agent"""
+    try:
+        logger.info(f"Received Gemini chat request: {request.message}")
+        
+        # Create or get session
+        session_id = request.session_id
+        if not session_id:
+            session_id = await db.create_chat_session(
+                user_id=request.user_id,
+                title=f"Gemini Chat: {request.message[:50]}..."
+            )
+        
+        # Add user message to session
+        await db.add_message_to_session(
+            session_id=session_id,
+            role=MessageRole.USER,
+            content=request.message
+        )
+        
+        # Get response from Gemini agent
+        response = await agent.run(request.message, session_id)
+        
+        # Add assistant response to session
+        await db.add_message_to_session(
+            session_id=session_id,
+            role=MessageRole.ASSISTANT,
+            content=response
+        )
+        
+        return ChatResponse(
+            response=response,
+            session_id=session_id,
+            metadata={"agent_type": "gemini_agent"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in Gemini chat endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Gemini chat error: {str(e)}")
+
+@app.post("/chat/agent")
+async def chat_with_agent_selection(
+    request: ChatRequest,
+    agent_type: str = Query(default="simple", description="Agent type: 'simple' or 'gemini'")
+):
+    """Chat endpoint with agent selection"""
+    try:
+        if agent_type == "gemini":
+            if gemini_agent is None:
+                raise HTTPException(status_code=500, detail="Gemini agent not available")
+            agent = gemini_agent
+        else:
+            if simple_agent is None:
+                raise HTTPException(status_code=500, detail="Simple agent not available") 
+            agent = simple_agent
+        
+        logger.info(f"Received chat request for {agent_type} agent: {request.message}")
+        
+        # Create or get session
+        session_id = request.session_id
+        if not session_id:
+            session_id = await db.create_chat_session(
+                user_id=request.user_id,
+                title=f"{agent_type.title()} Chat: {request.message[:50]}..."
+            )
+        
+        # Add user message to session
+        await db.add_message_to_session(
+            session_id=session_id,
+            role=MessageRole.USER,
+            content=request.message
+        )
+        
+        # Get response from selected agent
+        response = await agent.run(request.message, session_id)
+        
+        # Add assistant response to session
+        await db.add_message_to_session(
+            session_id=session_id,
+            role=MessageRole.ASSISTANT,
+            content=response
+        )
+        
+        return ChatResponse(
+            response=response,
+            session_id=session_id,
+            metadata={"agent_type": f"{agent_type}_agent"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in agent selection chat endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
+
+@app.get("/agents/test")
+async def test_agents():
+    """Test all available agents"""
+    results = {}
+    
+    try:
+        # Test simple agent
+        if simple_agent:
+            simple_response = await simple_agent.run("Hello, this is a test message")
+            results["simple_agent"] = {
+                "status": "working",
+                "response": simple_response[:100] + "..." if len(simple_response) > 100 else simple_response
+            }
+        else:
+            results["simple_agent"] = {"status": "not_available"}
+        
+        # Test Gemini agent
+        if gemini_agent:
+            gemini_test = gemini_agent.test_connection()
+            if gemini_test:
+                gemini_response = await gemini_agent.run("Hello, this is a test message")
+                results["gemini_agent"] = {
+                    "status": "working",
+                    "response": gemini_response[:100] + "..." if len(gemini_response) > 100 else gemini_response
+                }
+            else:
+                results["gemini_agent"] = {"status": "connection_failed"}
+        else:
+            results["gemini_agent"] = {"status": "not_available"}
+    
+    except Exception as e:
+        logger.error(f"Error testing agents: {e}")
+        results["error"] = str(e)
+    
+    return results
 
 @app.get("/chat/history", response_model=ChatHistoryResponse)
 async def get_chat_history(user_id: Optional[str] = None, limit: int = 50):
@@ -218,14 +360,13 @@ async def delete_chat_session(session_id: str):
 
 @app.post("/rag/add-document")
 async def add_document(
-    content: str,
-    title: Optional[str] = None,
-    metadata: Optional[dict] = None,
+    content: str = Form(..., description="Document content"),
+    title: Optional[str] = Form(None, description="Document title"),
     rag: RAGService = Depends(get_rag_service)
 ):
     """Add a document to the RAG system"""
     try:
-        doc_metadata = metadata or {}
+        doc_metadata = {}
         if title:
             doc_metadata["title"] = title
         
@@ -242,7 +383,7 @@ async def add_document(
 
 @app.post("/rag/upload-file")
 async def upload_file(
-    file: UploadFile = File(...),
+    file: UploadFile = File(..., description="File to upload"),
     rag: RAGService = Depends(get_rag_service)
 ):
     """Upload and add a text file to the RAG system"""

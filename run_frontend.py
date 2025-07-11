@@ -1,72 +1,51 @@
 #!/usr/bin/env python3
 """
-Run the Gradio frontend for the Reflect Agent Chatbot
+Launch the new HTML frontend
 """
 import subprocess
 import sys
-import time
 import requests
+import time
+from pathlib import Path
 
 def check_backend():
-    """Check if the FastAPI backend is running"""
+    """Check if the backend is running"""
     try:
-        response = requests.get("http://localhost:8000/health", timeout=5)
-        return response.status_code == 200
-    except:
+        response = requests.get("http://localhost:8001/health", timeout=5)
+        if response.status_code == 200:
+            print("✅ Backend is running and healthy")
+            return True
+        else:
+            print(f"⚠️  Backend responded with status {response.status_code}")
+            return False
+    except requests.exceptions.RequestException:
+        print("❌ Backend is not running or not accessible")
         return False
 
 def main():
-    print("🤖 Reflect Agent Chatbot - Frontend Launcher")
+    print("🚀 Starting Reflect Agent AI Frontend")
     print("=" * 50)
     
     # Check if backend is running
+    print("🔍 Checking backend status...")
     if not check_backend():
-        print("⚠️  FastAPI backend is not running!")
-        print("Please start the backend first:")
-        print("   python3 main.py")
-        print("   OR")
-        print("   python3 run.py")
-        print()
-        
-        choice = input("Start backend automatically? (y/n): ").lower().strip()
-        if choice == 'y':
-            print("🚀 Starting FastAPI backend...")
-            subprocess.Popen([sys.executable, "main.py"])
-            
-            # Wait for backend to start
-            print("⏳ Waiting for backend to start...")
-            for i in range(30):  # Wait up to 30 seconds
-                if check_backend():
-                    print("✅ Backend is ready!")
-                    break
-                time.sleep(1)
-                print(f"   Checking... ({i+1}/30)")
-            else:
-                print("❌ Backend failed to start. Please start manually.")
-                return
-        else:
-            print("❌ Frontend requires backend to be running. Exiting.")
-            return
-    else:
-        print("✅ Backend is running!")
+        print("\n⚠️  Backend not detected. Please start the backend first:")
+        print("   uvicorn main:app --host 0.0.0.0 --port 8001")
+        print("\nContinuing to start frontend anyway...")
+        time.sleep(2)
     
-    print()
-    print("🌐 Starting Gradio frontend...")
-    print("📱 Frontend will open at: http://localhost:7860")
-    print("📚 Backend API docs at: http://localhost:8000/docs")
-    print()
+    # Start the HTML frontend server
+    frontend_script = Path(__file__).parent / "frontend" / "server.py"
     
-    # Start the frontend
-    from frontend.gradio_app import create_interface
-    
-    demo = create_interface()
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        show_error=True,
-        inbrowser=True
-    )
+    try:
+        print(f"\n🌐 Starting HTML frontend server...")
+        subprocess.run([sys.executable, str(frontend_script)], check=True)
+    except KeyboardInterrupt:
+        print("\n🛑 Frontend stopped by user")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error starting frontend: {e}")
+    except FileNotFoundError:
+        print(f"❌ Frontend server script not found: {frontend_script}")
 
 if __name__ == "__main__":
     main() 

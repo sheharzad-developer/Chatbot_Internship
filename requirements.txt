@@ -11,11 +11,12 @@ langchain-community==0.2.16
 langchain-core==0.2.38
 tavily-python==0.3.3
 pydantic==2.5.0
-python-multipart==0.0.6
+python-multipart==0.0.20
 httpx==0.25.2
 aiofiles==23.2.1
 tiktoken==0.7.0
 numpy==1.26.4
 scikit-learn==1.7.0
 sentence-transformers==3.0.1
-gradio==4.15.0 
+gradio==4.15.0
+google-genai

@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 Reflect Agent AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: #ffffff;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .sidebar {
+            flex: 0 0 300px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(15px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            height: fit-content;
+        }
+
+        .main-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(15px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .agent-selector {
+            margin-bottom: 20px;
+        }
+
+        .agent-selector h3 {
+            margin-bottom: 15px;
+            color: #ffffff;
+        }
+
+        .agent-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .agent-option {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .agent-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .agent-option.active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #ffffff;
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .status-section {
+            margin-top: 30px;
+        }
+
+        .status-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .status-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 300px);
+        }
+
+        .message {
+            margin: 15px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 18px 18px 5px 18px;
+            padding: 12px 18px;
+            max-width: 80%;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .bot-message {
+            align-self: flex-start;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 18px 18px 18px 5px;
+            padding: 12px 18px;
+            max-width: 80%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .bot-message p {
+            margin: 0 0 12px 0;
+        }
+
+        .bot-message p:last-child {
+            margin-bottom: 0;
+        }
+
+        .bot-message ul, .bot-message ol {
+            margin: 12px 0;
+            padding-left: 20px;
+        }
+
+        .bot-message li {
+            margin: 6px 0;
+        }
+
+        .bot-message strong {
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .bot-message em {
+            font-style: italic;
+            opacity: 0.9;
+        }
+
+        .bot-message code {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .bot-message pre {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .bot-message pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .bot-message blockquote {
+            border-left: 3px solid rgba(255, 255, 255, 0.3);
+            padding-left: 12px;
+            margin: 12px 0;
+            opacity: 0.9;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(15px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .message-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 12px 20px;
+            color: #ffffff;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .message-input:focus {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+        }
+
+        .message-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 24px;
+            color: #ffffff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-display {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            opacity: 0.7;
+        }
+
+        .error {
+            color: #ff6b6b;
+        }
+
+        .success {
+            color: #4ecdc4;
+        }
+
+        .history-section {
+            margin-top: 30px;
+        }
+
+        .history-section h3 {
+            margin-bottom: 15px;
+            color: #ffffff;
+        }
+
+        .chat-history-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .history-item.active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #ffffff;
+        }
+
+        .history-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .history-meta {
+            font-size: 12px;
+            opacity: 0.7;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .no-history {
+            text-align: center;
+            opacity: 0.6;
+            font-style: italic;
+            padding: 20px 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                flex: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 Reflect Agent AI</h1>
+        <p>Intelligent Assistant with Conditional Reasoning, Web Search & Document Knowledge</p>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="agent-selector">
+                <h3>🚀 Choose AI Agent</h3>
+                <div class="agent-options">
+                    <div class="agent-option active" data-agent="gemini">
+                        <div style="font-size: 1.5em;">🔮</div>
+                        <div><strong>Gemini Agent</strong></div>
+                        <div style="font-size: 0.9em; opacity: 0.8;">Direct Google API</div>
+                    </div>
+                    <div class="agent-option" data-agent="simple">
+                        <div style="font-size: 1.5em;">🤖</div>
+                        <div><strong>Simple Agent</strong></div>
+                        <div style="font-size: 0.9em; opacity: 0.8;">LangChain Based</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-section">
+                <h3>⚡ Quick Actions</h3>
+                <button class="status-button" onclick="checkHealth()">💚 System Health</button>
+                <button class="status-button" onclick="loadChatHistory()">📜 Chat History</button>
+                <button class="status-button" onclick="clearChat()">🗑️ Clear Chat</button>
+                <div id="statusDisplay" class="status-display" style="display: none;"></div>
+            </div>
+
+            <div class="history-section">
+                <h3>💬 Recent Chats</h3>
+                <div id="chatHistoryList" class="chat-history-list">
+                    <div class="no-history">No chat history yet</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-chat">
+            <div class="chat-container" id="chatContainer">
+                <div class="message">
+                    <div class="bot-message">
+                        🎉 Welcome! I'm your AI assistant. Choose an agent and start chatting!
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-area">
+                <input type="text" class="message-input" id="messageInput" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
+                <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAgent = 'gemini';
+        let sessionId = null;
+
+        // Agent selection
+        document.querySelectorAll('.agent-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.agent-option').forEach(o => o.classList.remove('active'));
+                this.classList.add('active');
+                currentAgent = this.dataset.agent;
+                addSystemMessage(`Switched to ${currentAgent === 'gemini' ? '🔮 Gemini' : '🤖 Simple'} Agent`);
+            });
+        });
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function formatMarkdown(text) {
+            // Enhanced markdown parser for better text formatting
+            let formatted = text;
+            
+            // First, handle code blocks (to avoid processing content inside them)
+            formatted = formatted.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+            
+            // Handle inline code
+            formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Handle bold text - be more specific to avoid conflicts
+            formatted = formatted.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+            
+            // Split into lines for better processing
+            let lines = formatted.split('\n');
+            let result = [];
+            let inList = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                
+                // Handle bullet points
+                if (line.match(/^\*\s+(.+)/) || line.match(/^•\s+(.+)/)) {
+                    if (!inList) {
+                        result.push('<ul>');
+                        inList = true;
+                    }
+                    line = line.replace(/^[\*•]\s+(.+)/, '<li>$1</li>');
+                    result.push(line);
+                } 
+                // Handle numbered lists
+                else if (line.match(/^\d+\.\s+(.+)/)) {
+                    if (!inList) {
+                        result.push('<ol>');
+                        inList = true;
+                    }
+                    line = line.replace(/^\d+\.\s+(.+)/, '<li>$1</li>');
+                    result.push(line);
+                }
+                // Regular lines
+                else {
+                    if (inList) {
+                        result.push('</ul>');
+                        inList = false;
+                    }
+                    
+                    if (line === '') {
+                        result.push('<br>');
+                    } else {
+                        result.push(line);
+                    }
+                }
+            }
+            
+            // Close any open list
+            if (inList) {
+                result.push('</ul>');
+            }
+            
+            formatted = result.join('\n');
+            
+            // Handle remaining formatting
+            formatted = formatted.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+            
+            // Convert double line breaks to paragraph breaks
+            formatted = formatted.replace(/\n\n+/g, '</p><p>');
+            
+            // Wrap in paragraph tags
+            if (!formatted.startsWith('<')) {
+                formatted = '<p>' + formatted + '</p>';
+            }
+            
+            // Clean up
+            formatted = formatted.replace(/<p><\/p>/g, '');
+            formatted = formatted.replace(/<p>\s*<\/p>/g, '');
+            formatted = formatted.replace(/\n/g, ' ');
+            
+            return formatted;
+        }
+
+        function addMessage(content, isUser = false) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = isUser ? 'user-message' : 'bot-message';
+            
+            if (isUser) {
+                messageContent.textContent = content;
+            } else {
+                // Format bot messages with markdown
+                messageContent.innerHTML = formatMarkdown(content);
+            }
+            
+            messageDiv.appendChild(messageContent);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addSystemMessage(content) {
+            addMessage(`<em style="opacity: 0.7;">ℹ️ ${content}</em>`);
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Disable input and show loading
+            input.disabled = true;
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
+
+            // Add user message to chat
+            addMessage(message, true);
+            input.value = '';
+
+            try {
+                const endpoint = currentAgent === 'gemini' ? '/chat/gemini' : '/chat';
+                
+                const response = await fetch(`http://localhost:8001${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: sessionId,
+                        user_id: 'web_user'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const wasNewSession = !sessionId;
+                    sessionId = data.session_id;
+                    
+                    const agentEmoji = currentAgent === 'gemini' ? '🔮' : '🤖';
+                    const agentName = currentAgent === 'gemini' ? 'Gemini' : 'Simple';
+                    addMessage(`<strong>${agentEmoji} ${agentName}:</strong> ${data.response}`);
+                    
+                    // Refresh chat history if this was a new session
+                    if (wasNewSession) {
+                        loadChatHistory();
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                addMessage(`<div class="error">❌ Error: ${error.message}</div>`);
+                console.error('Error sending message:', error);
+            } finally {
+                // Re-enable input
+                input.disabled = false;
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send';
+                input.focus();
+            }
+        }
+
+        async function checkHealth() {
+            const statusDisplay = document.getElementById('statusDisplay');
+            statusDisplay.style.display = 'block';
+            statusDisplay.innerHTML = 'Checking system health...';
+            statusDisplay.className = 'status-display loading';
+
+            try {
+                const response = await fetch('http://localhost:8001/health');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const services = data.services || {};
+                    
+                    statusDisplay.innerHTML = `✅ System Status: ${data.status.toUpperCase()}
+
+🔌 MongoDB: ${data.mongodb}
+📚 RAG Documents: ${data.rag_system?.total_documents || 0}
+🤖 Simple Agent: ${services.simple_agent ? '✅ Ready' : '❌ Not Ready'}
+🔮 Gemini Agent: ${services.gemini_agent ? '✅ Ready' : '❌ Not Ready'}
+⚡ RAG Service: ${services.rag_service ? '✅ Ready' : '❌ Not Ready'}`;
+                    statusDisplay.className = 'status-display success';
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                statusDisplay.innerHTML = `❌ Cannot connect to server: ${error.message}`;
+                statusDisplay.className = 'status-display error';
+            }
+        }
+
+        function clearChat() {
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.innerHTML = `
+                <div class="message">
+                    <div class="bot-message">
+                        🎉 Chat cleared! Ready for a new conversation.
+                    </div>
+                </div>
+            `;
+            sessionId = null;
+            addSystemMessage('Started new chat session');
+            
+            // Clear active history selection
+            document.querySelectorAll('.history-item').forEach(item => {
+                item.classList.remove('active');
+            });
+        }
+
+        async function loadChatHistory() {
+            const historyList = document.getElementById('chatHistoryList');
+            historyList.innerHTML = '<div class="loading">Loading chat history...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:8001/chat/history?limit=10');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const sessions = data.sessions || [];
+                    
+                    if (sessions.length === 0) {
+                        historyList.innerHTML = '<div class="no-history">No chat history found</div>';
+                        return;
+                    }
+                    
+                    historyList.innerHTML = '';
+                    
+                    sessions.forEach(session => {
+                        const historyItem = document.createElement('div');
+                        historyItem.className = 'history-item';
+                        historyItem.dataset.sessionId = session.session_id;
+                        
+                        const title = session.title || 'Untitled Chat';
+                        const messageCount = session.messages?.length || 0;
+                        const created = new Date(session.created_at).toLocaleDateString();
+                        
+                        historyItem.innerHTML = `
+                            <div class="history-title">${title}</div>
+                            <div class="history-meta">
+                                <span>${messageCount} messages</span>
+                                <span>${created}</span>
+                            </div>
+                        `;
+                        
+                        historyItem.addEventListener('click', () => loadChatSession(session.session_id, historyItem));
+                        historyList.appendChild(historyItem);
+                    });
+                    
+                    addSystemMessage(`Loaded ${sessions.length} chat sessions`);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                historyList.innerHTML = `<div class="error">❌ Error loading history: ${error.message}</div>`;
+            }
+        }
+
+        async function loadChatSession(sessionIdToLoad, historyItemElement) {
+            try {
+                const response = await fetch(`http://localhost:8001/chat/session/${sessionIdToLoad}`);
+                
+                if (response.ok) {
+                    const sessionData = await response.json();
+                    const messages = sessionData.messages || [];
+                    
+                    // Clear current chat
+                    const chatContainer = document.getElementById('chatContainer');
+                    chatContainer.innerHTML = '';
+                    
+                    // Load all messages from the session
+                    messages.forEach(message => {
+                        const isUser = message.role === 'user';
+                        if (isUser) {
+                            addMessage(message.content, true);
+                        } else {
+                            addMessage(`🤖 ${message.content}`, false);
+                        }
+                    });
+                    
+                    // Set current session ID
+                    sessionId = sessionIdToLoad;
+                    
+                    // Update active history item
+                    document.querySelectorAll('.history-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    historyItemElement.classList.add('active');
+                    
+                    addSystemMessage(`Loaded chat session with ${messages.length} messages`);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                addMessage(`<div class="error">❌ Error loading session: ${error.message}</div>`);
+            }
+        }
+
+        // Auto-load chat history on page load
+        window.addEventListener('load', function() {
+            document.getElementById('messageInput').focus();
+            loadChatHistory();
+        });
+    </script>
+</body>
+</html> 

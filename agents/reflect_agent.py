@@ -28,7 +28,7 @@ class AgentState(Dict):
 class ReflectAgent:
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-pro",
+            model="gemini-1.5-flash",
             google_api_key=settings.google_ai_generative,
             temperature=0.7
         )
@@ -116,7 +116,7 @@ class ReflectAgent:
         prompt = f"{system_prompt}\n\nUser message: {state['current_message']}\n{context}"
         
         try:
-            response = self.llm.invoke([SystemMessage(content=prompt)])
+            response = self.llm.invoke([HumanMessage(content=prompt)])
             content = response.content
             
             # Parse the response
@@ -206,7 +206,7 @@ class ReflectAgent:
         prompt = f"{system_prompt}\n\nUser message: {state['current_message']}\n\n{context}\n\nResponse:"
         
         try:
-            response = self.llm.invoke([SystemMessage(content=prompt)])
+            response = self.llm.invoke([HumanMessage(content=prompt)])
             state["final_answer"] = response.content
             
         except Exception as e:

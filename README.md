@@ -1,200 +1,182 @@
-# Reflect Agent Chatbot
+# 🤖 Reflect Agent AI - Chatbot Internship Project
 
-A sophisticated chatbot built with FastAPI featuring a Reflect Agent with conditional edges, RAG (Retrieval-Augmented Generation), Tavily web search, MongoDB chat history, Langfuse observability, and a **beautiful Gradio web interface**.
+A sophisticated AI chatbot application with dual agent support (Google Gemini & LangChain), beautiful web interface, chat history, and document knowledge management.
 
-## Features
+## 🌟 Features
 
-- 🤖 **Reflect Agent** with conditional edges using LangGraph
-- 🔍 **RAG System** with document chunking and vector search (sklearn + Sentence Transformers)
-- 🌐 **Tavily Web Search** for real-time information
-- 💬 **Chat History** stored in MongoDB
-- 📊 **Langfuse Integration** for observability and tracing
-- 🚀 **FastAPI** with comprehensive REST API
-- 🎨 **Gradio Frontend** - Beautiful web interface
-- 🔒 **Environment Variables** for secure configuration
+- **🔮 Google Gemini Integration**: Direct Google GenAI API with your exact implementation
+- **🤖 LangChain Agent**: Alternative AI agent with advanced reasoning
+- **💬 Chat History**: Full conversation browsing and restoration
+- **📚 Document Knowledge**: RAG (Retrieval-Augmented Generation) system
+- **🌐 Beautiful UI**: Modern HTML frontend with ChatGPT-style formatting
+- **📱 Responsive Design**: Works on desktop and mobile
+- **⚡ Real-time**: Instant messaging with proper error handling
+- **🔄 Agent Switching**: Compare responses between different AI models
 
-## Project Structure
+## 🏗️ Architecture
 
-```
-chatbot/
-├── agents/
-│   ├── __init__.py
-│   └── reflect_agent.py       # Main reflect agent with conditional edges
-├── config/
-│   ├── __init__.py
-│   └── settings.py           # Environment configuration
-├── database/
-│   ├── __init__.py
-│   └── mongodb.py           # MongoDB operations
-├── frontend/
-│   ├── __init__.py
-│   └── gradio_app.py        # Gradio web interface
-├── models/
-│   ├── __init__.py
-│   └── chat.py             # Pydantic models
-├── services/
-│   ├── __init__.py
-│   ├── rag_service.py      # RAG with chunking and vector search
-│   └── tavily_search.py    # Tavily web search service
-├── main.py                 # FastAPI application
-├── run.py                  # FastAPI startup script
-├── run_frontend.py         # Gradio frontend launcher
-├── requirements.txt        # Python dependencies
-├── .env.example           # Environment variables template
-├── .gitignore            # Git ignore rules
-└── README.md             # This file
+- **Backend**: FastAPI + MongoDB + RAG System
+- **Frontend**: Clean HTML/CSS/JavaScript (no frameworks!)
+- **Database**: MongoDB for persistent chat history
+- **Vector Search**: Sentence Transformers + scikit-learn
+- **AI Models**: Google Gemini 2.5 Flash + LangChain agents
+
+## 🚀 Quick Start
+
+### 1️⃣ Setup Environment
+```bash
+# Clone repository
+git clone https://github.com/sheharzad-developer/Chatbot_Internship.git
+cd Chatbot_Internship
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Setup environment variables
+cp .env.example .env
+# Add your Google Gemini API key to .env
 ```
 
-## Installation
+### 2️⃣ Start Backend
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8001
+```
 
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd chatbot
-   ```
+### 3️⃣ Start Frontend
+```bash
+# In new terminal
+python run_frontend.py
+```
 
-2. **Create virtual environment:**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+### 4️⃣ Access Application
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8001
+- **API Docs**: http://localhost:8001/docs
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## 🎯 Key Components
 
-4. **Set up environment variables:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your actual API keys and credentials
-   ```
+### Frontend (`frontend/`)
+- `index.html` - Beautiful chat interface with markdown rendering
+- `server.py` - Simple HTTP server with CORS support
 
-## Usage
+### Backend (`main.py`)
+- `/chat/gemini` - Google Gemini API endpoint
+- `/chat` - LangChain agent endpoint  
+- `/chat/history` - Retrieve chat sessions
+- `/chat/session/{id}` - Load specific conversation
 
-### 🎨 **Option 1: Web Interface (Recommended)**
+### Agents (`agents/`)
+- `gemini_agent.py` - Google GenAI integration
+- `simple_agent.py` - LangChain-based agent
+- `reflect_agent.py` - Advanced reasoning agent
+
+### Services (`services/`)
+- `gemini_service.py` - Direct Google GenAI client
+- `rag_service.py` - Document search system
+- `tavily_search.py` - Web search integration
+
+## 🔧 Environment Variables
 
 ```bash
-# Start the beautiful Gradio web interface
-python3 run_frontend.py
+# Required
+GOOGLE_API_KEY=your_gemini_api_key_here
+
+# Optional
+MONGODB_URI=mongodb://localhost:27017/chatbot
+TAVILY_API_KEY=your_tavily_key
+LANGFUSE_SECRET_KEY=your_langfuse_secret
+LANGFUSE_PUBLIC_KEY=your_langfuse_public  
+LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
-This will:
-- ✅ Check if the backend is running (auto-start if needed)
-- 🌐 Launch the web interface at http://localhost:7860
-- 📱 Open your browser automatically
+## 📁 Project Structure
 
-**Features of the Web Interface:**
-- 💬 **Chat Tab**: Conversational interface with your reflect agent
-- 📚 **Document Management**: Add documents and search RAG system
-- 📊 **System Status**: Health checks and chat history
-- 🎯 **User-Friendly**: No need for curl commands!
+```
+Chatbot_Internship/
+├── 🤖 agents/              # AI agent implementations
+│   ├── gemini_agent.py     # Google Gemini integration
+│   ├── simple_agent.py     # LangChain agent
+│   └── reflect_agent.py    # Advanced reasoning
+├── ⚙️ config/              # Configuration files
+├── 🗄️ database/            # MongoDB connections
+├── 🌐 frontend/            # HTML web interface
+│   ├── index.html          # Main chat interface
+│   └── server.py          # Frontend server
+├── 📊 models/              # Pydantic data models
+├── 🔧 services/            # External integrations
+│   ├── gemini_service.py   # Google GenAI client
+│   ├── rag_service.py      # Document search
+│   └── tavily_search.py    # Web search
+├── 📚 docs/                # Documentation
+├── 🧪 examples/            # Code examples
+├── 🧪 tests/              # Test files
+├── 📄 main.py             # FastAPI backend
+├── 🚀 run_frontend.py     # Frontend launcher
+└── 📋 requirements.txt    # Dependencies
+```
 
-### ⚙️ **Option 2: API Only**
+## 🎨 Features Showcase
 
+### Dual Agent System
+- **🔮 Gemini Agent**: Lightning-fast responses with Google's latest model
+- **🤖 Simple Agent**: Robust LangChain-based reasoning
+
+### Chat History
+- **📜 Browse Sessions**: See all your past conversations
+- **🔄 Continue Chats**: Click any session to resume
+- **📅 Date Tracking**: Organized by creation date
+
+### Beautiful Formatting
+- **📝 Markdown Support**: Bold, italic, code blocks
+- **• Bullet Points**: Clean list formatting
+- **📏 Proper Spacing**: ChatGPT-style text rendering
+
+## 🛠️ Development
+
+### Running Tests
 ```bash
-# 1. Start the backend API
-python3 run.py
-# or
-python3 main.py
-
-# 2. Access API documentation
-# Visit: http://localhost:8000/docs
+python -m pytest tests/
 ```
 
-## Access Points
-
-### 🎨 **Web Interface** (Main Access)
-- **Gradio Frontend**: http://localhost:7860
-
-### 🔧 **API Endpoints**
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
-- **Alternative Docs**: http://localhost:8000/redoc
-
-## How It Works
-
-### Reflect Agent with Conditional Edges
-
-The agent uses LangGraph to implement a sophisticated reasoning flow:
-
-1. **Think Node**: Analyzes the input and decides what action to take
-2. **Conditional Edge**: Decides whether to act or provide a direct answer
-3. **Act Node**: Performs web search or document search if needed
-4. **Observe Node**: Processes the results
-5. **Final Answer Node**: Generates the response
-
-The agent **doesn't always follow** the thought→action→observation pattern. It uses conditional edges to:
-- Skip actions when a direct answer is sufficient
-- Limit iterations to prevent infinite loops
-- Choose between web search and document search based on the query
-
-### RAG System
-
-- **Document Chunking**: Uses tiktoken to split documents into manageable chunks
-- **Vector Embeddings**: Uses Sentence Transformers (all-MiniLM-L6-v2)
-- **Vector Search**: sklearn NearestNeighbors for fast similarity search
-- **Persistence**: Saves index and metadata to disk
-
-### Services Integration
-
-- **Tavily**: Real-time web search for current information
-- **MongoDB**: Persistent chat history storage
-- **Langfuse**: Observability and tracing for debugging and monitoring
-
-## Quick Test
-
-### 🎨 **Via Web Interface:**
-1. Run `python3 run_frontend.py`
-2. Open http://localhost:7860
-3. Start chatting in the web interface!
-
-### 🔧 **Via API:**
+### API Testing
 ```bash
-# Chat with the bot
-curl -X POST "http://localhost:8000/chat" \
-     -H "Content-Type: application/json" \
-     -d '{"message": "What is the latest news about AI?"}'
+# Test Gemini endpoint
+curl -X POST "http://localhost:8001/chat/gemini" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello!", "user_id": "test"}'
 
-# Add a document to RAG
-curl -X POST "http://localhost:8000/rag/add-document" \
-     -d "content=Your document content here&title=My Document"
-
-# Search documents
-curl -X GET "http://localhost:8000/rag/search?query=your search query"
+# Test health
+curl http://localhost:8001/health
 ```
 
-## Development
+## 📈 Monitoring
 
-The project follows best practices:
+- **Health Check**: http://localhost:8001/health
+- **System Stats**: Built-in monitoring dashboard
+- **Chat Analytics**: Message count and session tracking
 
-- **Modular Architecture**: Clean separation of concerns
-- **Environment Variables**: No hardcoded secrets
-- **Async/Await**: Efficient async operations
-- **Error Handling**: Comprehensive error handling
-- **Logging**: Structured logging throughout
-- **Type Hints**: Full type annotation
-- **Beautiful UI**: User-friendly Gradio interface
-- **Documentation**: Comprehensive API docs
-
-## Monitoring
-
-The system includes observability through:
-
-- **Langfuse Tracing**: Track agent reasoning and performance
-- **Health Checks**: Monitor system status via web UI or API
-- **Structured Logging**: Debug and monitor operations
-- **RAG Statistics**: Track document and search metrics
-- **Web Dashboard**: Real-time system status in Gradio
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Submit a pull request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License. 
+This project is part of an internship program and is licensed under the MIT License.
+
+## 🎯 Internship Goals Achieved
+
+- ✅ Google Gemini API Integration
+- ✅ FastAPI Backend Development  
+- ✅ MongoDB Database Management
+- ✅ Modern Frontend Development
+- ✅ Chat History Implementation
+- ✅ RAG System Integration
+- ✅ Production-Ready Deployment
+- ✅ Beautiful UI/UX Design
+
+---
+
+**Built with ❤️ during Software Engineering Internship** 
