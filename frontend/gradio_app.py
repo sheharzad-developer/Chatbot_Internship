@@ -164,81 +164,284 @@ chatbot = ChatbotInterface()
 
 # Create Gradio interface
 def create_interface():
-    with gr.Blocks(
-        title="🤖 Reflect Agent Chatbot",
-        theme=gr.themes.Soft(),
-        css="""
+    # Custom CSS for ChatGPT-like styling
+    custom_css = """
+    /* Main container styling */
+    .gradio-container {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    }
+    
+    /* Header styling */
+    .header-container {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 0;
+    }
+    
+    /* Chat container - full height like ChatGPT */
+    .chat-container {
+        height: 70vh;
+        background-color: #f7f7f8;
+        border-radius: 8px;
+        border: 1px solid #e5e5ea;
+    }
+    
+    /* Message styling */
+    .message {
+        margin: 10px 0;
+        padding: 12px 16px;
+        border-radius: 18px;
+        max-width: 80%;
+        line-height: 1.4;
+    }
+    
+    .user-message {
+        background-color: #007bff;
+        color: white;
+        margin-left: auto;
+        text-align: right;
+    }
+    
+    .bot-message {
+        background-color: #f1f3f5;
+        color: #333;
+        border: 1px solid #e5e5ea;
+    }
+    
+    /* Input area styling */
+    .input-container {
+        padding: 20px;
+        background-color: white;
+        border-top: 1px solid #e5e5ea;
+        position: sticky;
+        bottom: 0;
+    }
+    
+    /* Input box styling */
+    .message-input {
+        border-radius: 25px !important;
+        border: 2px solid #e5e5ea !important;
+        padding: 12px 20px !important;
+        font-size: 16px !important;
+        transition: border-color 0.2s ease !important;
+    }
+    
+    .message-input:focus {
+        border-color: #007bff !important;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
+    }
+    
+    /* Send button styling */
+    .send-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        border: none !important;
+        border-radius: 25px !important;
+        color: white !important;
+        font-weight: 600 !important;
+        padding: 12px 24px !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .send-button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    /* Sidebar styling */
+    .sidebar {
+        background-color: #f8f9fa;
+        border-right: 1px solid #e5e5ea;
+        height: 100vh;
+        padding: 20px;
+    }
+    
+    /* Tab styling */
+    .tab-nav button {
+        background-color: transparent !important;
+        border: none !important;
+        padding: 12px 24px !important;
+        margin: 0 4px !important;
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .tab-nav button[aria-selected="true"] {
+        background-color: #007bff !important;
+        color: white !important;
+    }
+    
+    /* Examples styling */
+    .examples-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+        margin-top: 20px;
+    }
+    
+    .example-item {
+        background: white;
+        border: 1px solid #e5e5ea;
+        border-radius: 12px;
+        padding: 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+    }
+    
+    .example-item:hover {
+        border-color: #007bff;
+        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+        transform: translateY(-2px);
+    }
+    
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
         .gradio-container {
-            max-width: 1200px;
-            margin: auto;
+            background-color: #1a1a1a;
+            color: #ffffff;
         }
+        
         .chat-container {
-            height: 600px;
+            background-color: #2d2d2d;
+            border-color: #404040;
         }
-        """
+        
+        .bot-message {
+            background-color: #404040;
+            color: #ffffff;
+            border-color: #555555;
+        }
+        
+        .sidebar {
+            background-color: #2d2d2d;
+            border-color: #404040;
+        }
+    }
+    """
+    
+    with gr.Blocks(
+        title="🤖 Reflect Agent AI",
+        theme=gr.themes.Soft(),
+        css=custom_css
     ) as demo:
         
-        gr.Markdown("""
-        # 🤖 Reflect Agent Chatbot
+        # Header section with ChatGPT-like styling
+        with gr.Row(elem_classes=["header-container"]):
+            gr.HTML("""
+            <div style="text-align: center; padding: 20px;">
+                <h1 style="margin: 0; font-size: 2.5rem; font-weight: 700; margin-bottom: 10px;">
+                    🤖 Reflect Agent AI
+                </h1>
+                <p style="margin: 0; font-size: 1.1rem; opacity: 0.9;">
+                    Intelligent Assistant with Conditional Reasoning, Web Search & Document Knowledge
+                </p>
+            </div>
+            """)
         
-        Welcome to your intelligent chatbot with **Conditional Reasoning**, **Web Search**, **Document Search**, and **Chat History**!
-        
-        ### Features:
-        - 🧠 **Smart Reasoning**: Doesn't always act - uses conditional logic
-        - 🌐 **Web Search**: Real-time information via Tavily
-        - 📚 **Document Search**: RAG system with vector similarity
-        - 💬 **Chat History**: Persistent conversation storage
-        - 📊 **System Monitoring**: Health checks and statistics
-        """)
-        
-        with gr.Tabs():
-            # Main Chat Tab
-            with gr.TabItem("💬 Chat", elem_id="chat-tab"):
-                chatbot_ui = gr.Chatbot(
-                    label="Chat with your Reflect Agent",
-                    height=500,
-                    show_label=True,
-                    container=True,
-                    elem_classes=["chat-container"]
-                )
+        # Main layout with sidebar and chat
+        with gr.Row():
+            # Sidebar for navigation
+            with gr.Column(scale=1, elem_classes=["sidebar"]):
+                gr.HTML("""
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 10px 0; color: #666;">🚀 Features</h3>
+                    <div style="font-size: 14px; line-height: 1.6; color: #888;">
+                        <div style="margin: 8px 0;">🧠 Smart Reasoning</div>
+                        <div style="margin: 8px 0;">🌐 Web Search</div>
+                        <div style="margin: 8px 0;">📚 Document Search</div>
+                        <div style="margin: 8px 0;">💬 Chat History</div>
+                        <div style="margin: 8px 0;">📊 System Monitoring</div>
+                    </div>
+                </div>
+                """)
                 
-                with gr.Row():
-                    msg_input = gr.Textbox(
-                        placeholder="Type your message here...",
-                        label="Your Message",
-                        lines=2,
-                        scale=4
-                    )
-                    send_btn = gr.Button("Send 🚀", scale=1, variant="primary")
-                
-                gr.Examples(
-                    examples=[
-                        "Hello! How are you today?",
-                        "What's the latest news about AI?",
-                        "Can you search for information about Python programming?",
-                        "Tell me about machine learning",
-                        "What documents do you have access to?"
-                    ],
-                    inputs=msg_input,
-                    label="Example Questions"
-                )
+                # Quick actions in sidebar
+                with gr.Group():
+                    gr.Markdown("### Quick Actions")
+                    health_btn = gr.Button("💚 System Health", variant="secondary", size="sm")
+                    history_btn = gr.Button("📜 Chat History", variant="secondary", size="sm")
+                    clear_btn = gr.Button("🗑️ Clear Chat", variant="secondary", size="sm")
             
+            # Main chat area
+            with gr.Column(scale=4):
+                # Chat interface
+                chatbot_ui = gr.Chatbot(
+                    label="",
+                    height=600,
+                    show_label=False,
+                    container=True,
+                    elem_classes=["chat-container"],
+                    avatar_images=("🧑‍💻", "🤖"),
+                    bubble_full_width=False
+                )
+                
+                # Input area at bottom (ChatGPT style)
+                with gr.Row(elem_classes=["input-container"]):
+                    msg_input = gr.Textbox(
+                        placeholder="Message Reflect Agent AI...",
+                        label="",
+                        lines=1,
+                        scale=6,
+                        elem_classes=["message-input"],
+                        show_label=False
+                    )
+                    send_btn = gr.Button(
+                        "Send", 
+                        scale=1, 
+                        variant="primary",
+                        elem_classes=["send-button"]
+                    )
+                
+                # Example prompts (ChatGPT style)
+                with gr.Row():
+                    with gr.Column():
+                        gr.HTML("""
+                        <div class="examples-container">
+                            <div class="example-item" onclick="document.querySelector('textarea[placeholder*=\"Message\"]').value='What\\'s the latest in AI technology?'; document.querySelector('textarea[placeholder*=\"Message\"]').dispatchEvent(new Event('input', {bubbles: true}));">
+                                <strong>🔬 Latest AI News</strong><br>
+                                <small>Get current information about AI developments</small>
+                            </div>
+                            <div class="example-item" onclick="document.querySelector('textarea[placeholder*=\"Message\"]').value='Can you help me understand machine learning?'; document.querySelector('textarea[placeholder*=\"Message\"]').dispatchEvent(new Event('input', {bubbles: true}));">
+                                <strong>🧠 Learn ML</strong><br>
+                                <small>Understand machine learning concepts</small>
+                            </div>
+                            <div class="example-item" onclick="document.querySelector('textarea[placeholder*=\"Message\"]').value='Search for Python programming best practices'; document.querySelector('textarea[placeholder*=\"Message\"]').dispatchEvent(new Event('input', {bubbles: true}));">
+                                <strong>💻 Python Tips</strong><br>
+                                <small>Find programming best practices</small>
+                            </div>
+                            <div class="example-item" onclick="document.querySelector('textarea[placeholder*=\"Message\"]').value='What documents do you have access to?'; document.querySelector('textarea[placeholder*=\"Message\"]').dispatchEvent(new Event('input', {bubbles: true}));">
+                                <strong>📚 Knowledge Base</strong><br>
+                                <small>Explore available documents</small>
+                            </div>
+                        </div>
+                        """)
+        
+        # Hidden tabs for additional features (accessible via sidebar)
+        with gr.Tabs(visible=False) as hidden_tabs:
             # Document Management Tab
             with gr.TabItem("📚 Document Management"):
-                gr.Markdown("### Add Documents to Knowledge Base")
+                gr.Markdown("### 📄 Add Documents to Knowledge Base")
                 
                 with gr.Row():
                     with gr.Column():
                         doc_title = gr.Textbox(
                             label="Document Title",
-                            placeholder="Enter document title..."
+                            placeholder="Enter document title...",
+                            elem_classes=["message-input"]
                         )
                         doc_content = gr.Textbox(
                             label="Document Content",
                             placeholder="Paste your document content here...",
-                            lines=10
+                            lines=10,
+                            elem_classes=["message-input"]
                         )
-                        add_doc_btn = gr.Button("Add Document 📄", variant="primary")
+                        add_doc_btn = gr.Button("Add Document 📄", variant="primary", elem_classes=["send-button"])
                     
                     with gr.Column():
                         doc_result = gr.Textbox(
@@ -247,12 +450,13 @@ def create_interface():
                             interactive=False
                         )
                 
-                gr.Markdown("### Search Documents")
+                gr.Markdown("### 🔍 Search Documents")
                 with gr.Row():
                     search_input = gr.Textbox(
                         label="Search Query",
                         placeholder="Enter your search query...",
-                        scale=3
+                        scale=3,
+                        elem_classes=["message-input"]
                     )
                     search_btn = gr.Button("Search 🔍", scale=1, variant="secondary")
                 
@@ -262,12 +466,8 @@ def create_interface():
                     interactive=False
                 )
             
-            # System Status Tab
+            # System Status Tab  
             with gr.TabItem("📊 System Status"):
-                with gr.Row():
-                    health_btn = gr.Button("Check Health 💚", variant="secondary")
-                    history_btn = gr.Button("View Chat History 📜", variant="secondary")
-                
                 status_output = gr.Textbox(
                     label="System Information",
                     lines=15,
@@ -280,10 +480,21 @@ def create_interface():
                 - **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
                 - **Alternative Docs**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
                 """)
+            
+            
         
         # Event handlers
         def submit_message(message, history):
             return chatbot.send_message(message, history)
+        
+        def clear_chat():
+            return []
+        
+        def show_health():
+            return chatbot.get_health_status()
+        
+        def show_history():
+            return chatbot.get_chat_history()
         
         # Chat functionality
         msg_input.submit(
@@ -298,28 +509,48 @@ def create_interface():
             outputs=[chatbot_ui, msg_input]
         )
         
-        # Document management
-        add_doc_btn.click(
-            chatbot.add_document,
-            inputs=[doc_content, doc_title],
-            outputs=doc_result
+        # Sidebar actions
+        clear_btn.click(
+            clear_chat,
+            outputs=chatbot_ui
         )
         
-        search_btn.click(
-            chatbot.search_documents,
-            inputs=search_input,
-            outputs=search_result
-        )
+        # For the hidden tabs functionality
+        if 'add_doc_btn' in locals():
+            add_doc_btn.click(
+                chatbot.add_document,
+                inputs=[doc_content, doc_title],
+                outputs=doc_result
+            )
         
-        # System status
+        if 'search_btn' in locals():
+            search_btn.click(
+                chatbot.search_documents,
+                inputs=search_input,
+                outputs=search_result
+            )
+        
+        # Create a simple status display function for sidebar buttons
+        def create_status_display():
+            status_display = gr.Textbox(
+                label="Status",
+                lines=10,
+                interactive=False,
+                visible=False
+            )
+            return status_display
+        
+        # Handle sidebar button clicks with popups or notifications
         health_btn.click(
-            chatbot.get_health_status,
-            outputs=status_output
+            fn=lambda: gr.Info(chatbot.get_health_status()),
+            inputs=None,
+            outputs=None
         )
         
         history_btn.click(
-            chatbot.get_chat_history,
-            outputs=status_output
+            fn=lambda: gr.Info(chatbot.get_chat_history()),
+            inputs=None,
+            outputs=None
         )
     
     return demo
