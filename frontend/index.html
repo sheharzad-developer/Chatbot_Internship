@@ -386,6 +386,13 @@
                         <div style="font-size: 0.9em; opacity: 0.8;">LangChain Based</div>
                     </div>
                 </div>
+                
+                <div style="margin-top: 15px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="fastMode" checked style="accent-color: #667eea;">
+                        <span>⚡ Fast Mode (Skip database)</span>
+                    </label>
+                </div>
             </div>
 
             <div class="status-section">
@@ -407,8 +414,7 @@
         <div class="main-chat">
             <div class="chat-container" id="chatContainer">
                 <div class="message">
-                    <div class="bot-message">
-                        🎉 Welcome! I'm your AI assistant. Choose an agent and start chatting!
+                    <div class="bot-message">🎉 Welcome! I'm your AI assistant. Choose an agent and start chatting!
                     </div>
                 </div>
             </div>
@@ -421,8 +427,9 @@
     </div>
 
     <script>
-        let currentAgent = 'gemini';
+        let currentAgent = 'simple'; // Changed to simple as default
         let sessionId = null;
+        let fastMode = true; // Added fastMode flag
 
         // Agent selection
         document.querySelectorAll('.agent-option').forEach(option => {
@@ -432,6 +439,12 @@
                 currentAgent = this.dataset.agent;
                 addSystemMessage(`Switched to ${currentAgent === 'gemini' ? '🔮 Gemini' : '🤖 Simple'} Agent`);
             });
+        });
+
+        // Fast Mode checkbox
+        document.getElementById('fastMode').addEventListener('change', function() {
+            fastMode = this.checked;
+            addSystemMessage(`Fast Mode: ${fastMode ? 'Enabled' : 'Disabled'}`);
         });
 
         function handleKeyPress(event) {
@@ -561,7 +574,14 @@
             input.value = '';
 
             try {
-                const endpoint = currentAgent === 'gemini' ? '/chat/gemini' : '/chat';
+                const fastMode = document.getElementById('fastMode').checked;
+                let endpoint;
+                
+                if (fastMode) {
+                    endpoint = '/chat/fast';  // Ultra-fast mode (no database)
+                } else {
+                    endpoint = currentAgent === 'gemini' ? '/chat/gemini' : '/chat';
+                }
                 
                 const response = await fetch(`http://localhost:8000${endpoint}`, {
                     method: 'POST',
@@ -571,7 +591,8 @@
                     body: JSON.stringify({
                         message: message,
                         session_id: sessionId,
-                        user_id: 'web_user'
+                        user_id: 'web_user',
+                        fast_mode: fastMode // Pass fastMode
                     })
                 });
 
@@ -582,7 +603,8 @@
                     
                     const agentEmoji = currentAgent === 'gemini' ? '🔮' : '🤖';
                     const agentName = currentAgent === 'gemini' ? 'Gemini' : 'Simple';
-                    addMessage(`<strong>${agentEmoji} ${agentName}:</strong> ${data.response}`);
+                    const modeIndicator = fastMode ? ' ⚡' : '';
+                    addMessage(`<strong>${agentEmoji} ${agentName}${modeIndicator}:</strong> ${data.response}`);
                     
                     // Refresh chat history if this was a new session
                     if (wasNewSession) {
