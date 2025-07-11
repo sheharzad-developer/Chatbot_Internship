@@ -131,6 +131,27 @@ async def health_check():
         logger.error(f"Health check failed: {e}")
         raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
 
+@app.post("/chat/fast", response_model=ChatResponse)
+async def fast_chat(
+    request: ChatRequest,
+    agent: SimpleAgent = Depends(get_simple_agent)
+):
+    """Ultra-fast chat endpoint - no database operations for maximum speed"""
+    try:
+        # Skip all database operations for speed
+        # Get response from simple agent directly
+        response = await agent.run(request.message)
+        
+        return ChatResponse(
+            response=response,
+            session_id="fast-mode",  # Static session ID
+            metadata={"agent_type": "simple_agent", "mode": "fast"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in fast chat endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Fast chat error: {str(e)}")
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,

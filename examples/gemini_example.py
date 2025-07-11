@@ -10,7 +10,7 @@ from google import genai
 from google.genai import types
 
 # Set the API key from user's request
-API_KEY = ""
+API_KEY = "AIzaSyBY5IBp0zRBqtstrIWYOHvfWNZVku_8IwE"
 os.environ['GEMINI_API_KEY'] = API_KEY
 
 def example_1_basic():

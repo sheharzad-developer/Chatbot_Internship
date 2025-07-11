@@ -5,29 +5,26 @@ from services.gemini_service import GeminiService
 logger = logging.getLogger(__name__)
 
 class GeminiAgent:
-    """Agent using direct Google Gemini API integration"""
+    """Agent using direct Google Gemini API integration - optimized for speed"""
     
     def __init__(self):
         self.gemini_service = GeminiService()
     
     async def run(self, message: str, session_id: Optional[str] = None) -> str:
-        """Run agent with direct Gemini API"""
-        logger.info(f"Processing message with Gemini Agent: {message}")
-        
+        """Run agent with direct Gemini API - speed optimized"""
         try:
-            system_prompt = """You are a helpful AI assistant. Provide clear, helpful, and conversational responses to user questions. 
-            Be friendly and informative while keeping responses concise and relevant."""
+            # Shorter prompt for faster processing
+            system_prompt = "You are a helpful AI assistant. Provide clear, concise responses."
             
             full_prompt = f"{system_prompt}\n\nUser: {message}\n\nAssistant:"
             
-            # Use the direct Gemini service
+            # Use faster model and disable thinking for speed
             response = await self.gemini_service.generate_content(
                 prompt=full_prompt,
-                model="gemini-2.5-flash",
+                model="gemini-1.5-flash",  # Use faster model instead of 2.5-flash
                 disable_thinking=True
             )
             
-            logger.info("Response generated successfully with Gemini Agent")
             return response
             
         except Exception as e:

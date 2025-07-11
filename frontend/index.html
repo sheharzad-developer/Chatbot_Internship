@@ -375,16 +375,23 @@
             <div class="agent-selector">
                 <h3>🚀 Choose AI Agent</h3>
                 <div class="agent-options">
-                    <div class="agent-option active" data-agent="gemini">
+                    <div class="agent-option" data-agent="gemini">
                         <div style="font-size: 1.5em;">🔮</div>
                         <div><strong>Gemini Agent</strong></div>
                         <div style="font-size: 0.9em; opacity: 0.8;">Direct Google API</div>
                     </div>
-                    <div class="agent-option" data-agent="simple">
+                    <div class="agent-option active" data-agent="simple">
                         <div style="font-size: 1.5em;">🤖</div>
                         <div><strong>Simple Agent</strong></div>
                         <div style="font-size: 0.9em; opacity: 0.8;">LangChain Based</div>
                     </div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="fastMode" checked style="accent-color: #667eea;">
+                        <span>⚡ Fast Mode (Skip database)</span>
+                    </label>
                 </div>
             </div>
 
@@ -421,7 +428,7 @@
     </div>
 
     <script>
-        let currentAgent = 'gemini';
+        let currentAgent = 'simple'; // Changed from 'gemini' to 'simple'
         let sessionId = null;
 
         // Agent selection
@@ -561,7 +568,14 @@
             input.value = '';
 
             try {
-                const endpoint = currentAgent === 'gemini' ? '/chat/gemini' : '/chat';
+                const fastMode = document.getElementById('fastMode').checked;
+                let endpoint;
+                
+                if (fastMode) {
+                    endpoint = '/chat/fast';  // Ultra-fast mode (no database)
+                } else {
+                    endpoint = currentAgent === 'gemini' ? '/chat/gemini' : '/chat';
+                }
                 
                 const response = await fetch(`http://localhost:8000${endpoint}`, {
                     method: 'POST',
@@ -582,7 +596,8 @@
                     
                     const agentEmoji = currentAgent === 'gemini' ? '🔮' : '🤖';
                     const agentName = currentAgent === 'gemini' ? 'Gemini' : 'Simple';
-                    addMessage(`<strong>${agentEmoji} ${agentName}:</strong> ${data.response}`);
+                    const modeIndicator = fastMode ? ' ⚡' : '';
+                    addMessage(`<strong>${agentEmoji} ${agentName}${modeIndicator}:</strong> ${data.response}`);
                     
                     // Refresh chat history if this was a new session
                     if (wasNewSession) {
