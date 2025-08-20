@@ -38,11 +38,12 @@ class MongoDatabase:
             self.client.close()
             logger.info("Disconnected from MongoDB")
     
-    async def create_chat_session(self, user_id: Optional[str] = None, title: Optional[str] = None) -> str:
+    async def create_chat_session(self, user_id: Optional[str] = None, title: Optional[str] = None, tenant_id: str = "default", collection_prefix: str = "") -> str:
         """Create a new chat session"""
         session_id = str(uuid.uuid4())
         session = ChatSession(
             session_id=session_id,
+            tenant_id=tenant_id,
             user_id=user_id,
             title=title or f"Chat {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}"
         )
@@ -51,7 +52,7 @@ class MongoDatabase:
         logger.info(f"Created new chat session: {session_id}")
         return session_id
     
-    async def add_message_to_session(self, session_id: str, role: MessageRole, content: str, metadata: Optional[Dict[str, Any]] = None) -> bool:
+    async def add_message_to_session(self, session_id: str, role: MessageRole, content: str, metadata: Optional[Dict[str, Any]] = None, collection_prefix: str = "") -> bool:
         """Add a message to an existing chat session"""
         try:
             message = ChatMessage(

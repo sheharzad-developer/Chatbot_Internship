@@ -12,7 +12,7 @@ from pathlib import Path
 frontend_dir = Path(__file__).parent
 os.chdir(frontend_dir)
 
-PORT = 3000
+PORT = 3001
 
 class MyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):

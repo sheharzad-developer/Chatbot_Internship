@@ -1,0 +1,88 @@
+tenant_id: "enterprise"
+tenant_name: "Enterprise Corporation"
+description: "Enterprise tenant with advanced tools and security"
+
+# MCP Server Configuration
+mcp_server:
+  url: "ws://enterprise-mcp.internal:3001"
+  protocol: "websocket"
+  auth:
+    type: "api_key"
+    api_key: "${ENTERPRISE_MCP_API_KEY}"
+  connection_params:
+    timeout: 45
+    max_retries: 5
+
+# System Prompt Configuration
+system_prompt: |
+  You are an enterprise AI assistant for Enterprise Corporation. 
+  You have access to specialized business tools and databases.
+  Always prioritize security and compliance in your responses.
+  Provide detailed analysis and professional recommendations.
+  You can access internal databases, financial tools, and enterprise APIs.
+
+# Tool Configuration
+tools:
+  enabled: true
+  max_concurrent: 10
+  timeout: 120
+  allowed_categories:
+    - "search"
+    - "calculation"
+    - "data_analysis"
+    - "file_operations"
+    - "database_query"
+    - "financial_analysis"
+    - "reporting"
+    - "compliance_check"
+  
+  # Tool-specific prompts
+  tool_prompts:
+    database_query: "Use this tool to query enterprise databases for business intelligence and reporting."
+    financial_analysis: "Use this tool for financial calculations, forecasting, and market analysis."
+    compliance_check: "Use this tool to verify compliance with enterprise policies and regulations."
+    internal_search: "Use this tool to search internal knowledge bases and documentation."
+
+# LLM Configuration
+llm:
+  provider: "deepseek"  # More powerful model for enterprise
+  model: "deepseek-chat"
+  temperature: 0.3  # Lower temperature for more consistent responses
+  max_tokens: 2000
+  brief_mode_max_tokens: 300
+
+# Security Settings
+security:
+  rate_limit:
+    requests_per_minute: 200
+    burst_limit: 50
+  
+  content_filtering:
+    enabled: true
+    block_personal_info: true
+    block_sensitive_data: true
+    custom_filters:
+      - "financial_data_protection"
+      - "compliance_screening"
+
+# Logging and Monitoring
+monitoring:
+  langfuse:
+    enabled: true
+    session_tracking: true
+    tool_call_tracking: true
+    cost_tracking: true
+    detailed_tracing: true
+  
+  custom_tags:
+    - "enterprise_tenant"
+    - "production"
+    - "high_security"
+
+# Database Configuration (tenant-specific)
+database:
+  isolation: true
+  collection_prefix: "enterprise_"
+  retention_days: 365
+  backup_enabled: true
+  encryption_at_rest: true 

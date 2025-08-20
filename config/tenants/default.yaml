@@ -1,0 +1,74 @@
+tenant_id: "default"
+tenant_name: "Default Organization"
+description: "Default tenant configuration for demo purposes"
+
+# MCP Server Configuration
+mcp_server:
+  url: "ws://localhost:3001"
+  protocol: "websocket"
+  auth:
+    type: "none"  # none, api_key, bearer_token
+  connection_params:
+    timeout: 30
+    max_retries: 3
+
+# System Prompt Configuration
+system_prompt: |
+  You are a helpful AI assistant for the Default Organization. 
+  You have access to various tools that can help you provide accurate and up-to-date information.
+  Always use tools when appropriate to give the most accurate responses.
+  Be concise and professional in your responses.
+
+# Tool Configuration
+tools:
+  enabled: true
+  max_concurrent: 5
+  timeout: 60
+  allowed_categories:
+    - "search"
+    - "calculation"
+    - "data_analysis"
+    - "file_operations"
+  
+  # Tool-specific prompts
+  tool_prompts:
+    search: "Use this tool to search for current information when the user asks about recent events or needs up-to-date data."
+    calculator: "Use this tool for mathematical calculations and numerical analysis."
+    file_reader: "Use this tool to read and analyze file contents when users upload or reference files."
+
+# LLM Configuration
+llm:
+  provider: "groq"  # groq, google-ai, deepseek, gemini, simple
+  model: "llama3-8b-8192"
+  temperature: 0.7
+  max_tokens: 1000
+  brief_mode_max_tokens: 200
+
+# Security Settings
+security:
+  rate_limit:
+    requests_per_minute: 60
+    burst_limit: 10
+  
+  content_filtering:
+    enabled: true
+    block_personal_info: true
+    block_sensitive_data: true
+
+# Logging and Monitoring
+monitoring:
+  langfuse:
+    enabled: true
+    session_tracking: true
+    tool_call_tracking: true
+    cost_tracking: true
+  
+  custom_tags:
+    - "default_tenant"
+    - "production"
+
+# Database Configuration (tenant-specific)
+database:
+  isolation: true
+  collection_prefix: "default_"
+  retention_days: 90 

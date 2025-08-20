@@ -1,5 +1,8 @@
 # 🤖 Reflect Agent AI - Chatbot Internship Project
 
+<img width="1394" height="968" alt="image" src="https://github.com/user-attachments/assets/18e489cd-c5d7-49bd-9d3c-422f5d50c534" />
+
+
 A sophisticated AI chatbot application with dual agent support (Google Gemini & LangChain), beautiful web interface, chat history, and document knowledge management.
 
 ## 🌟 Features
@@ -179,4 +182,4 @@ This project is part of an internship program and is licensed under the MIT Lice
 
 ---
 
-**Built with ❤️ during Software Engineering Internship** 
+**Built with ❤️ during Software Engineering Internship**

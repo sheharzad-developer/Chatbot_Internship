@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 Reflect Agent AI</title>
+    <title>🤖 Tool-Aware Multi-Tenant Chatbot</title>
     <style>
         * {
             margin: 0;
@@ -50,13 +50,15 @@
         }
 
         .sidebar {
-            flex: 0 0 300px;
+            flex: 0 0 320px;
             background: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(15px);
             border-radius: 16px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 20px;
             height: fit-content;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
         }
 
         .main-chat {
@@ -70,68 +72,139 @@
             overflow: hidden;
         }
 
-        .agent-selector {
-            margin-bottom: 20px;
+        .tools-sidebar {
+            flex: 0 0 300px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(15px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            height: fit-content;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
         }
 
-        .agent-selector h3 {
+        .tenant-selector {
+            margin-bottom: 25px;
+        }
+
+        .tenant-selector h3 {
             margin-bottom: 15px;
             color: #ffffff;
-        }
-
-        .agent-options {
             display: flex;
-            flex-direction: column;
-            gap: 10px;
+            align-items: center;
+            gap: 8px;
         }
 
-        .agent-option {
+        .tenant-option {
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 12px;
             padding: 15px;
+            margin-bottom: 10px;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-align: center;
         }
 
-        .agent-option:hover {
+        .tenant-option:hover {
             background: rgba(255, 255, 255, 0.2);
             border-color: rgba(255, 255, 255, 0.4);
-            transform: translateY(-2px);
         }
 
-        .agent-option.active {
+        .tenant-option.active {
             background: rgba(255, 255, 255, 0.3);
             border-color: #ffffff;
             box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
         }
 
-        .status-section {
-            margin-top: 30px;
+        .tenant-name {
+            font-weight: bold;
+            margin-bottom: 5px;
         }
 
-        .status-button {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 10px 15px;
+        .tenant-details {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+
+        .tenant-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .tool-section {
+            margin-top: 20px;
+        }
+
+        .tool-section h3 {
+            margin-bottom: 15px;
             color: #ffffff;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            width: 100%;
-            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .status-button:hover {
-            background: rgba(255, 255, 255, 0.2);
+        .tool-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid #4CAF50;
+        }
+
+        .tool-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .tool-description {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .chat-header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .tool-toggle {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            border-radius: 20px;
+            padding: 8px 16px;
+            color: #4CAF50;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tool-toggle:hover {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .tool-toggle.disabled {
+            background: rgba(244, 67, 54, 0.2);
+            border-color: rgba(244, 67, 54, 0.5);
+            color: #f44336;
         }
 
         .chat-container {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            max-height: calc(100vh - 300px);
+            max-height: calc(100vh - 320px);
         }
 
         .message {
@@ -141,488 +214,594 @@
         }
 
         .user-message {
-            align-self: flex-end;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            border-radius: 18px 18px 5px 18px;
-            padding: 12px 18px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 20px 20px 5px 20px;
+            margin-left: auto;
             max-width: 80%;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .bot-message {
-            align-self: flex-start;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            border-radius: 18px 18px 18px 5px;
-            padding: 12px 18px;
-            max-width: 80%;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            line-height: 1.6;
-            white-space: pre-wrap;
-        }
-
-        .bot-message p {
-            margin: 0 0 12px 0;
-        }
-
-        .bot-message p:last-child {
-            margin-bottom: 0;
-        }
-
-        .bot-message ul, .bot-message ol {
-            margin: 12px 0;
-            padding-left: 20px;
-        }
-
-        .bot-message li {
-            margin: 6px 0;
-        }
-
-        .bot-message strong {
-            font-weight: 600;
-            color: #ffffff;
-        }
-
-        .bot-message em {
-            font-style: italic;
-            opacity: 0.9;
-        }
-
-        .bot-message code {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.9em;
-        }
-
-        .bot-message pre {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 12px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 12px 0;
-        }
-
-        .bot-message pre code {
-            background: none;
-            padding: 0;
-        }
-
-        .bot-message blockquote {
-            border-left: 3px solid rgba(255, 255, 255, 0.3);
-            padding-left: 12px;
-            margin: 12px 0;
-            opacity: 0.9;
-        }
-
-        .input-area {
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(15px);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .message-input {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 25px;
-            padding: 12px 20px;
-            color: #ffffff;
-            font-size: 16px;
-            outline: none;
-            transition: all 0.3s ease;
-        }
-
-        .message-input:focus {
-            border-color: rgba(255, 255, 255, 0.5);
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
-        }
-
-        .message-input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .send-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 25px;
-            padding: 12px 24px;
-            color: #ffffff;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            word-wrap: break-word;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
-        .send-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        .bot-message {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 20px 20px 20px 5px;
+            margin-right: auto;
+            max-width: 80%;
+            word-wrap: break-word;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .send-button:disabled {
+        .tool-call-container {
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 10px 0;
+            max-width: 90%;
+        }
+
+        .tool-call-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .tool-call-content {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .tool-result {
+            background: rgba(33, 150, 243, 0.15);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 8px;
+            font-size: 0.9rem;
+        }
+
+        .input-container {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        #messageInput {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 15px 20px;
+            color: #ffffff;
+            font-size: 16px;
+            resize: none;
+            max-height: 120px;
+            min-height: 50px;
+        }
+
+        #messageInput::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        #messageInput:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        #sendButton {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #sendButton:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        #sendButton:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
 
         .status-display {
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             padding: 15px;
-            margin-top: 15px;
-            font-family: monospace;
-            font-size: 14px;
-            white-space: pre-wrap;
-            max-height: 200px;
-            overflow-y: auto;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            white-space: pre-line;
+        }
+
+        .status-display.loading {
+            border-left: 4px solid #2196F3;
+        }
+
+        .status-display.success {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .status-display.error {
+            border-left: 4px solid #f44336;
         }
 
         .loading {
-            opacity: 0.7;
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
         }
 
-        .error {
-            color: #ff6b6b;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
-        .success {
-            color: #4ecdc4;
-        }
-
-        .history-section {
-            margin-top: 30px;
-        }
-
-        .history-section h3 {
-            margin-bottom: 15px;
-            color: #ffffff;
-        }
-
-        .chat-history-list {
-            max-height: 300px;
-            overflow-y: auto;
+        .chat-history {
+            margin-top: 20px;
         }
 
         .history-item {
             background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 8px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
 
         .history-item:hover {
             background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.4);
         }
 
         .history-item.active {
             background: rgba(255, 255, 255, 0.3);
-            border-color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
 
         .history-title {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 5px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            font-weight: bold;
+            margin-bottom: 4px;
         }
 
-        .history-meta {
-            font-size: 12px;
+        .history-date {
+            font-size: 0.8rem;
             opacity: 0.7;
-            display: flex;
-            justify-content: space-between;
         }
 
-        .no-history {
+        .button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-bottom: 10px;
             text-align: center;
-            opacity: 0.6;
+        }
+
+        .button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .no-tools {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
             font-style: italic;
-            padding: 20px 10px;
+            padding: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .tools-sidebar {
+                display: none;
+            }
         }
 
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
+                padding: 10px;
             }
             
             .sidebar {
                 flex: none;
+                max-height: 300px;
+            }
+            
+            .main-chat {
+                flex: 1;
+                min-height: 400px;
             }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🤖 Reflect Agent AI</h1>
-        <p>Intelligent Assistant with Conditional Reasoning, Web Search & Document Knowledge</p>
+        <h1>🤖 Tool-Aware Multi-Tenant Chatbot</h1>
+        <p>Advanced AI with Dynamic Tool Integration & Tenant Isolation</p>
     </div>
 
     <div class="container">
         <div class="sidebar">
-            <div class="agent-selector">
-                <h3>🚀 Choose AI Agent</h3>
-                <div class="agent-options">
-                    <div class="agent-option active" data-agent="gemini">
-                        <div style="font-size: 1.5em;">🔮</div>
-                        <div><strong>Gemini Agent</strong></div>
-                        <div style="font-size: 0.9em; opacity: 0.8;">Direct Google API</div>
-                    </div>
-                    <div class="agent-option" data-agent="simple">
-                        <div style="font-size: 1.5em;">🤖</div>
-                        <div><strong>Simple Agent</strong></div>
-                        <div style="font-size: 0.9em; opacity: 0.8;">LangChain Based</div>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 15px;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" id="fastMode" checked style="accent-color: #667eea;">
-                        <span>⚡ Fast Mode (Skip database)</span>
-                    </label>
+            <div class="tenant-selector">
+                <h3>🏢 Organizations</h3>
+                <div id="tenantList">
+                    <div class="loading">Loading tenants...</div>
                 </div>
             </div>
 
-            <div class="status-section">
-                <h3>⚡ Quick Actions</h3>
-                <button class="status-button" onclick="checkHealth()">💚 System Health</button>
-                <button class="status-button" onclick="loadChatHistory()">📜 Chat History</button>
-                <button class="status-button" onclick="clearChat()">🗑️ Clear Chat</button>
-                <div id="statusDisplay" class="status-display" style="display: none;"></div>
-            </div>
+            <div class="status-display" id="statusDisplay" style="display: none;"></div>
 
-            <div class="history-section">
-                <h3>💬 Recent Chats</h3>
-                <div id="chatHistoryList" class="chat-history-list">
-                    <div class="no-history">No chat history yet</div>
+            <div class="button" onclick="checkHealth()">🔍 System Health</div>
+            <div class="button" onclick="loadChatHistory()">📜 Chat History</div>
+            <div class="button" onclick="clearChat()">🗑️ Clear Chat</div>
+
+            <div class="chat-history">
+                <h3>Recent Conversations</h3>
+                <div id="chatHistoryList">
+                    <div style="text-align: center; color: rgba(255, 255, 255, 0.6); font-style: italic;">
+                        No history loaded
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="main-chat">
+            <div class="chat-header">
+                <div class="chat-title" id="chatTitle">Select a tenant to start chatting</div>
+                <div class="tool-toggle" id="toolToggle" onclick="toggleTools()">🔧 Tools: ON</div>
+            </div>
+
             <div class="chat-container" id="chatContainer">
                 <div class="message">
-                    <div class="bot-message">🎉 Welcome! I'm your AI assistant. Choose an agent and start chatting!
+                    <div class="bot-message">
+                        👋 Welcome to the Tool-Aware Multi-Tenant Chatbot!<br><br>
+                        <strong>Features:</strong><br>
+                        🏢 Multi-tenant isolation<br>
+                        🔧 Dynamic tool integration<br>
+                        📊 Langfuse tracking<br>
+                        🛡️ Secure orchestration<br><br>
+                        Please select an organization from the sidebar to begin.
                     </div>
                 </div>
             </div>
-            
-            <div class="input-area">
-                <input type="text" class="message-input" id="messageInput" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
-                <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea id="messageInput" placeholder="Select a tenant first..." disabled></textarea>
+                </div>
+                <button id="sendButton" onclick="sendMessage()" disabled>➤</button>
+            </div>
+        </div>
+
+        <div class="tools-sidebar">
+            <div class="tool-section">
+                <h3>🔧 Available Tools</h3>
+                <div id="toolsList">
+                    <div class="no-tools">Select a tenant to view tools</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        let currentAgent = 'simple'; // Changed to simple as default
-        let sessionId = null;
-        let fastMode = true; // Added fastMode flag
+        let currentTenant = null;
+        let currentSessionId = null;
+        let toolsEnabled = true;
+        let availableTools = [];
+        
+        // API Configuration - automatically detects environment
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8001' 
+            : window.location.origin;
 
-        // Agent selection
-        document.querySelectorAll('.agent-option').forEach(option => {
-            option.addEventListener('click', function() {
-                document.querySelectorAll('.agent-option').forEach(o => o.classList.remove('active'));
-                this.classList.add('active');
-                currentAgent = this.dataset.agent;
-                addSystemMessage(`Switched to ${currentAgent === 'gemini' ? '🔮 Gemini' : '🤖 Simple'} Agent`);
-            });
-        });
+        // Initialize the application
+        window.onload = function() {
+            loadTenants();
+            loadChatHistory();
+        };
 
-        // Fast Mode checkbox
-        document.getElementById('fastMode').addEventListener('change', function() {
-            fastMode = this.checked;
-            addSystemMessage(`Fast Mode: ${fastMode ? 'Enabled' : 'Disabled'}`);
-        });
-
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
-
-        function formatMarkdown(text) {
-            // Enhanced markdown parser for better text formatting
-            let formatted = text;
+        async function loadTenants() {
+            const tenantList = document.getElementById('tenantList');
             
-            // First, handle code blocks (to avoid processing content inside them)
-            formatted = formatted.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-            
-            // Handle inline code
-            formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
-            
-            // Handle bold text - be more specific to avoid conflicts
-            formatted = formatted.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-            
-            // Split into lines for better processing
-            let lines = formatted.split('\n');
-            let result = [];
-            let inList = false;
-            
-            for (let i = 0; i < lines.length; i++) {
-                let line = lines[i].trim();
+            try {
+                const response = await fetch(`${API_BASE}/tenants`);
+                const data = await response.json();
                 
-                // Handle bullet points
-                if (line.match(/^\*\s+(.+)/) || line.match(/^•\s+(.+)/)) {
-                    if (!inList) {
-                        result.push('<ul>');
-                        inList = true;
-                    }
-                    line = line.replace(/^[\*•]\s+(.+)/, '<li>$1</li>');
-                    result.push(line);
-                } 
-                // Handle numbered lists
-                else if (line.match(/^\d+\.\s+(.+)/)) {
-                    if (!inList) {
-                        result.push('<ol>');
-                        inList = true;
-                    }
-                    line = line.replace(/^\d+\.\s+(.+)/, '<li>$1</li>');
-                    result.push(line);
-                }
-                // Regular lines
-                else {
-                    if (inList) {
-                        result.push('</ul>');
-                        inList = false;
-                    }
+                if (data.tenants && data.tenants.length > 0) {
+                    tenantList.innerHTML = '';
                     
-                    if (line === '') {
-                        result.push('<br>');
-                    } else {
-                        result.push(line);
-                    }
+                    data.tenants.forEach(tenant => {
+                        const tenantElement = document.createElement('div');
+                        tenantElement.className = 'tenant-option';
+                        tenantElement.onclick = () => selectTenant(tenant);
+                        
+                        tenantElement.innerHTML = `
+                            <div class="tenant-name">${tenant.tenant_name}</div>
+                            <div class="tenant-details">${tenant.description}</div>
+                            <div class="tenant-stats">
+                                <span>🤖 ${tenant.llm_provider}</span>
+                                <span>🔧 ${tenant.tools_count} tools</span>
+                            </div>
+                        `;
+                        
+                        tenantList.appendChild(tenantElement);
+                    });
+                    
+                    // Auto-select first tenant
+                    selectTenant(data.tenants[0]);
+                } else {
+                    tenantList.innerHTML = '<div style="color: #f44336;">No tenants found</div>';
                 }
+            } catch (error) {
+                tenantList.innerHTML = '<div style="color: #f44336;">Error loading tenants</div>';
+                console.error('Error loading tenants:', error);
             }
-            
-            // Close any open list
-            if (inList) {
-                result.push('</ul>');
-            }
-            
-            formatted = result.join('\n');
-            
-            // Handle remaining formatting
-            formatted = formatted.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
-            
-            // Convert double line breaks to paragraph breaks
-            formatted = formatted.replace(/\n\n+/g, '</p><p>');
-            
-            // Wrap in paragraph tags
-            if (!formatted.startsWith('<')) {
-                formatted = '<p>' + formatted + '</p>';
-            }
-            
-            // Clean up
-            formatted = formatted.replace(/<p><\/p>/g, '');
-            formatted = formatted.replace(/<p>\s*<\/p>/g, '');
-            formatted = formatted.replace(/\n/g, ' ');
-            
-            return formatted;
         }
 
-        function addMessage(content, isUser = false) {
-            const chatContainer = document.getElementById('chatContainer');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message';
+        async function selectTenant(tenant) {
+            currentTenant = tenant;
+            currentSessionId = null;
             
-            const messageContent = document.createElement('div');
-            messageContent.className = isUser ? 'user-message' : 'bot-message';
+            // Update UI
+            document.querySelectorAll('.tenant-option').forEach(el => el.classList.remove('active'));
+            event.target.closest('.tenant-option').classList.add('active');
             
-            if (isUser) {
-                messageContent.textContent = content;
+            document.getElementById('chatTitle').textContent = `${tenant.tenant_name} Chat`;
+            document.getElementById('messageInput').placeholder = `Chat with ${tenant.tenant_name} (${tenant.llm_provider})...`;
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendButton').disabled = false;
+            
+            // Load tools for this tenant
+            await loadTenantTools(tenant.tenant_id);
+            
+            // Clear chat
+            clearChat();
+            
+            // Welcome message for tenant
+            addMessage(`
+                <div class="bot-message">
+                    🏢 <strong>Connected to ${tenant.tenant_name}</strong><br><br>
+                    📝 ${tenant.description}<br>
+                    🤖 LLM Provider: <strong>${tenant.llm_provider}</strong><br>
+                    🔧 Available Tools: <strong>${tenant.tools_count}</strong><br>
+                    🛡️ Secure Environment: <strong>Isolated</strong><br><br>
+                    Ready to chat with advanced tool integration!
+                </div>
+            `);
+        }
+
+        async function loadTenantTools(tenantId) {
+            const toolsList = document.getElementById('toolsList');
+            
+            try {
+                const response = await fetch(`${API_BASE}/tenants/${tenantId}/tools`);
+                const data = await response.json();
+                
+                if (data.tools && data.tools.length > 0) {
+                    availableTools = data.tools;
+                    toolsList.innerHTML = '';
+                    
+                    data.tools.forEach(tool => {
+                        const toolElement = document.createElement('div');
+                        toolElement.className = 'tool-item';
+                        toolElement.innerHTML = `
+                            <div class="tool-name">${tool.name}</div>
+                            <div class="tool-description">${tool.description || 'No description available'}</div>
+                        `;
+                        toolsList.appendChild(toolElement);
+                    });
+                } else {
+                    toolsList.innerHTML = '<div class="no-tools">No tools available</div>';
+                    availableTools = [];
+                }
+            } catch (error) {
+                toolsList.innerHTML = '<div class="no-tools" style="color: #f44336;">Error loading tools</div>';
+                availableTools = [];
+                console.error('Error loading tools:', error);
+            }
+        }
+
+        function toggleTools() {
+            toolsEnabled = !toolsEnabled;
+            const toggle = document.getElementById('toolToggle');
+            
+            if (toolsEnabled) {
+                toggle.textContent = '🔧 Tools: ON';
+                toggle.classList.remove('disabled');
             } else {
-                // Format bot messages with markdown
-                messageContent.innerHTML = formatMarkdown(content);
+                toggle.textContent = '🔧 Tools: OFF';
+                toggle.classList.add('disabled');
             }
-            
-            messageDiv.appendChild(messageContent);
-            chatContainer.appendChild(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        function addSystemMessage(content) {
-            addMessage(`<em style="opacity: 0.7;">ℹ️ ${content}</em>`);
         }
 
         async function sendMessage() {
             const input = document.getElementById('messageInput');
-            const sendButton = document.getElementById('sendButton');
             const message = input.value.trim();
-
-            if (!message) return;
-
-            // Disable input and show loading
+            
+            if (!message || !currentTenant) return;
+            
+            const sendButton = document.getElementById('sendButton');
+            
+            // Add user message
+            addMessage(`<div class="user-message">${escapeHtml(message)}</div>`);
+            
+            // Clear input and disable
+            input.value = '';
             input.disabled = true;
             sendButton.disabled = true;
-            sendButton.textContent = 'Sending...';
-
-            // Add user message to chat
-            addMessage(message, true);
-            input.value = '';
-
+            sendButton.innerHTML = '<div class="loading"></div>';
+            
+            // Show typing indicator
+            const typingId = addMessage(`
+                <div class="typing-indicator">
+                    <span>🤖 ${currentTenant.tenant_name} is thinking</span>
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            `);
+            
             try {
-                const fastMode = document.getElementById('fastMode').checked;
-                let endpoint;
+                const requestBody = {
+                    message: message,
+                    session_id: currentSessionId,
+                    user_id: 'web_user',
+                    enable_tools: toolsEnabled,
+                    brief_mode: false
+                };
                 
-                if (fastMode) {
-                    endpoint = '/chat/fast';  // Ultra-fast mode (no database)
-                } else {
-                    endpoint = currentAgent === 'gemini' ? '/chat/gemini' : '/chat';
-                }
-                
-                const response = await fetch(`http://localhost:8000${endpoint}`, {
+                const response = await fetch(`${API_BASE}/tenants/${currentTenant.tenant_id}/chat`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        session_id: sessionId,
-                        user_id: 'web_user',
-                        fast_mode: fastMode // Pass fastMode
-                    })
+                    body: JSON.stringify(requestBody)
                 });
-
+                
                 if (response.ok) {
                     const data = await response.json();
-                    const wasNewSession = !sessionId;
-                    sessionId = data.session_id;
                     
-                    const agentEmoji = currentAgent === 'gemini' ? '🔮' : '🤖';
-                    const agentName = currentAgent === 'gemini' ? 'Gemini' : 'Simple';
-                    const modeIndicator = fastMode ? ' ⚡' : '';
-                    addMessage(`<strong>${agentEmoji} ${agentName}${modeIndicator}:</strong> ${data.response}`);
+                    // Remove typing indicator
+                    removeMessage(typingId);
                     
-                    // Refresh chat history if this was a new session
-                    if (wasNewSession) {
-                        loadChatHistory();
+                    // Update session ID
+                    currentSessionId = data.session_id;
+                    
+                    // Show tool calls if any
+                    if (data.tools_used && data.tools_used.length > 0) {
+                        data.tools_used.forEach(toolCall => {
+                            addMessage(`
+                                <div class="tool-call-container">
+                                    <div class="tool-call-header">
+                                        🔧 Tool Call: ${toolCall.name}
+                                    </div>
+                                    <div class="tool-call-content">${JSON.stringify(toolCall.parameters, null, 2)}</div>
+                                    ${toolCall.result ? `<div class="tool-result">📋 Result: ${escapeHtml(JSON.stringify(toolCall.result, null, 2))}</div>` : ''}
+                                </div>
+                            `);
+                        });
                     }
+                    
+                    // Add bot response
+                    addMessage(`<div class="bot-message">${escapeHtml(data.response)}</div>`);
+                    
+                    // Update chat history
+                    loadChatHistory();
+                    
                 } else {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    removeMessage(typingId);
+                    const errorData = await response.json();
+                    addMessage(`<div class="bot-message" style="color: #f44336;">❌ Error: ${errorData.detail || 'Unknown error'}</div>`);
                 }
             } catch (error) {
-                addMessage(`<div class="error">❌ Error: ${error.message}</div>`);
+                removeMessage(typingId);
+                addMessage(`<div class="bot-message" style="color: #f44336;">❌ Network error: ${error.message}</div>`);
                 console.error('Error sending message:', error);
             } finally {
                 // Re-enable input
                 input.disabled = false;
                 sendButton.disabled = false;
-                sendButton.textContent = 'Send';
+                sendButton.innerHTML = '➤';
                 input.focus();
             }
+        }
+
+        function addMessage(html) {
+            const container = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = html;
+            
+            const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            messageDiv.id = messageId;
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            return messageId;
+        }
+
+        function removeMessage(messageId) {
+            const message = document.getElementById(messageId);
+            if (message) {
+                message.remove();
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         async function checkHealth() {
@@ -632,19 +811,25 @@
             statusDisplay.className = 'status-display loading';
 
             try {
-                const response = await fetch('http://localhost:8000/health');
-                
+                const response = await fetch(`${API_BASE}/health`);
+
                 if (response.ok) {
                     const data = await response.json();
-                    const services = data.services || {};
-                    
+                    const tenants = data.tenant_service?.tenant_health || {};
+
                     statusDisplay.innerHTML = `✅ System Status: ${data.status.toUpperCase()}
 
 🔌 MongoDB: ${data.mongodb}
 📚 RAG Documents: ${data.rag_system?.total_documents || 0}
-🤖 Simple Agent: ${services.simple_agent ? '✅ Ready' : '❌ Not Ready'}
-🔮 Gemini Agent: ${services.gemini_agent ? '✅ Ready' : '❌ Not Ready'}
-⚡ RAG Service: ${services.rag_service ? '✅ Ready' : '❌ Not Ready'}`;
+🏢 Tenants: ${Object.keys(tenants).length}
+🔧 Tool Agents: ${data.tool_aware_agents?.total_agents || 0}
+
+Tenant Health:`;
+
+                    Object.values(tenants).forEach(tenant => {
+                        statusDisplay.innerHTML += `\n  🏢 ${tenant.tenant_name}: ${tenant.status}`;
+                    });
+
                     statusDisplay.className = 'status-display success';
                 } else {
                     throw new Error(`HTTP ${response.status}`);
@@ -657,115 +842,95 @@
 
         function clearChat() {
             const chatContainer = document.getElementById('chatContainer');
-            chatContainer.innerHTML = `
-                <div class="message">
-                    <div class="bot-message">
-                        🎉 Chat cleared! Ready for a new conversation.
-                    </div>
-                </div>
-            `;
-            sessionId = null;
-            addSystemMessage('Started new chat session');
+            chatContainer.innerHTML = '';
+            currentSessionId = null;
             
-            // Clear active history selection
-            document.querySelectorAll('.history-item').forEach(item => {
-                item.classList.remove('active');
-            });
+            if (currentTenant) {
+                addMessage(`
+                    <div class="bot-message">
+                        🎉 Chat cleared! New session started with ${currentTenant.tenant_name}.
+                    </div>
+                `);
+            }
         }
 
         async function loadChatHistory() {
             const historyList = document.getElementById('chatHistoryList');
-            historyList.innerHTML = '<div class="loading">Loading chat history...</div>';
-            
+            historyList.innerHTML = '<div class="loading" style="text-align: center;">Loading...</div>';
+
             try {
-                const response = await fetch('http://localhost:8000/chat/history?limit=10');
-                
+                const response = await fetch(`${API_BASE}/chat/history?limit=10`);
+
                 if (response.ok) {
                     const data = await response.json();
                     const sessions = data.sessions || [];
-                    
+
                     if (sessions.length === 0) {
-                        historyList.innerHTML = '<div class="no-history">No chat history found</div>';
+                        historyList.innerHTML = '<div style="text-align: center; color: rgba(255, 255, 255, 0.6); font-style: italic;">No chat history found</div>';
                         return;
                     }
-                    
+
                     historyList.innerHTML = '';
-                    
+
                     sessions.forEach(session => {
                         const historyItem = document.createElement('div');
                         historyItem.className = 'history-item';
-                        historyItem.dataset.sessionId = session.session_id;
-                        
-                        const title = session.title || 'Untitled Chat';
-                        const messageCount = session.messages?.length || 0;
-                        const created = new Date(session.created_at).toLocaleDateString();
-                        
+                        historyItem.onclick = () => loadSession(session);
+
+                        const date = new Date(session.created_at).toLocaleDateString();
                         historyItem.innerHTML = `
-                            <div class="history-title">${title}</div>
-                            <div class="history-meta">
-                                <span>${messageCount} messages</span>
-                                <span>${created}</span>
-                            </div>
+                            <div class="history-title">${session.title}</div>
+                            <div class="history-date">${date} • ${session.messages.length} messages</div>
                         `;
-                        
-                        historyItem.addEventListener('click', () => loadChatSession(session.session_id, historyItem));
+
                         historyList.appendChild(historyItem);
                     });
-                    
-                    addSystemMessage(`Loaded ${sessions.length} chat sessions`);
                 } else {
                     throw new Error(`HTTP ${response.status}`);
                 }
             } catch (error) {
-                historyList.innerHTML = `<div class="error">❌ Error loading history: ${error.message}</div>`;
+                historyList.innerHTML = '<div style="color: #f44336; text-align: center;">Error loading history</div>';
+                console.error('Error loading chat history:', error);
             }
         }
 
-        async function loadChatSession(sessionIdToLoad, historyItemElement) {
-            try {
-                const response = await fetch(`http://localhost:8000/chat/session/${sessionIdToLoad}`);
-                
-                if (response.ok) {
-                    const sessionData = await response.json();
-                    const messages = sessionData.messages || [];
-                    
-                    // Clear current chat
-                    const chatContainer = document.getElementById('chatContainer');
-                    chatContainer.innerHTML = '';
-                    
-                    // Load all messages from the session
-                    messages.forEach(message => {
-                        const isUser = message.role === 'user';
-                        if (isUser) {
-                            addMessage(message.content, true);
-                        } else {
-                            addMessage(`🤖 ${message.content}`, false);
-                        }
-                    });
-                    
-                    // Set current session ID
-                    sessionId = sessionIdToLoad;
-                    
-                    // Update active history item
-                    document.querySelectorAll('.history-item').forEach(item => {
-                        item.classList.remove('active');
-                    });
-                    historyItemElement.classList.add('active');
-                    
-                    addSystemMessage(`Loaded chat session with ${messages.length} messages`);
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
+        function loadSession(session) {
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.innerHTML = '';
+            
+            currentSessionId = session.session_id;
+            
+            // Load all messages from session
+            session.messages.forEach(msg => {
+                if (msg.role === 'user') {
+                    addMessage(`<div class="user-message">${escapeHtml(msg.content)}</div>`);
+                } else if (msg.role === 'assistant') {
+                    addMessage(`<div class="bot-message">${escapeHtml(msg.content)}</div>`);
                 }
-            } catch (error) {
-                addMessage(`<div class="error">❌ Error loading session: ${error.message}</div>`);
-            }
+            });
+            
+            // Mark as active
+            document.querySelectorAll('.history-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.history-item').classList.add('active');
+            
+            addMessage(`<div class="bot-message" style="opacity: 0.7; font-style: italic;">📜 Loaded session: ${session.title}</div>`);
         }
 
-        // Auto-load chat history on page load
-        window.addEventListener('load', function() {
-            document.getElementById('messageInput').focus();
-            loadChatHistory();
+        // Handle Enter key in textarea
+        document.getElementById('messageInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Auto-resize textarea
+        document.getElementById('messageInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
         });
     </script>
 </body>
-</html> 
+</html>
