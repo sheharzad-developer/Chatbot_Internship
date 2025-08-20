@@ -1,35 +1,16 @@
-# Core FastAPI and server (Vercel optimized)
+# Ultra-lightweight for Vercel serverless (under 250MB)
 fastapi==0.116.0
 uvicorn==0.35.0
 python-dotenv==1.0.0
 
-# Database
-pymongo==4.6.0
-motor==3.3.2
-
-# AI and LangChain (minimal for serverless)
-langchain==0.2.16
-langchain-core==0.2.38
-langchain-community==0.2.16
-langchain-google-genai==1.0.10
+# Essential AI APIs only (no heavy ML libraries)
 google-generativeai==0.7.2
-
-# Observability
-langfuse==2.50.0
-
-# Search and utilities
-tavily-python==0.3.3
-numpy==1.26.4
-
-# Web and utilities
-pydantic==2.11.7
-python-multipart==0.0.20
 httpx==0.25.2
-aiofiles==23.2.1
-tiktoken==0.7.0
 
-# Tool integration (minimal)
+# Core utilities
+pydantic==2.11.7
+aiofiles==23.2.1
+
+# Basic tools
 jsonschema==4.24.0
 pyyaml==6.0.1
-tenacity==8.5.0
-cryptography==45.0.5

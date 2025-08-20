@@ -1,22 +1,12 @@
 import os
-import sys
+import json
 import logging
-from pathlib import Path
-
-# Add the parent directory to the path so we can import our modules
-parent_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(parent_dir))
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from typing import Optional
-
-# Import your existing modules
-from config.settings import settings
-from models.chat import ChatRequest, ChatResponse
-from agents.groq_agent import GroqAgent
-from agents.google_ai_agent import GoogleAIAgent
+import httpx
+import asyncio
 
 # Configure logging for serverless
 logging.basicConfig(level=logging.INFO)
@@ -24,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app optimized for serverless
 app = FastAPI(
-    title="Chatbot API",
+    title="AI Chatbot API",
     version="1.0.0",
-    description="AI Chatbot deployed on Vercel"
+    description="Lightweight AI Chatbot deployed on Vercel"
 )
 
 # Add CORS middleware
@@ -38,9 +28,101 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize lightweight agents (no MongoDB for now)
-groq_agent = GroqAgent()
-google_ai_agent = GoogleAIAgent()
+# Pydantic models
+class ChatRequest(BaseModel):
+    message: str
+    user_id: Optional[str] = "vercel-user"
+    session_id: Optional[str] = None
+    brief_mode: Optional[bool] = False
+
+class ChatResponse(BaseModel):
+    response: str
+    session_id: str
+    metadata: dict = {}
+
+# Simple lightweight AI service classes
+class GroqService:
+    def __init__(self):
+        self.api_key = os.getenv("GROQ_API_KEY", "")
+        self.base_url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+        
+    async def generate_content(self, prompt: str, model: str = "llama-3.3-70b-versatile", **kwargs) -> str:
+        if not self.api_key:
+            raise Exception("GROQ_API_KEY not set in environment variables")
+            
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 800,
+            "temperature": 0.3
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            else:
+                raise Exception(f"Groq API error: {response.status_code} - {response.text}")
+
+class GoogleAIService:
+    def __init__(self):
+        self.api_key = os.getenv("GOOGLE_AI_GENERATIVE", "")
+        self.base_url = "https://generativelanguage.googleapis.com/v1beta"
+    
+    async def generate_content(self, prompt: str, model: str = "gemini-1.5-flash", **kwargs) -> str:
+        if not self.api_key:
+            raise Exception("GOOGLE_AI_GENERATIVE not set in environment variables")
+            
+        url = f"{self.base_url}/models/{model}:generateContent"
+        
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": prompt}
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "maxOutputTokens": 800,
+                "temperature": 0.3
+            }
+        }
+        
+        params = {"key": self.api_key}
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url,
+                params=params,
+                json=payload,
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                candidates = data.get("candidates", [])
+                if candidates:
+                    return candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                return "No response generated"
+            else:
+                raise Exception(f"Google AI API error: {response.status_code} - {response.text}")
+
+# Initialize services
+groq_service = GroqService()
+google_ai_service = GoogleAIService()
 
 @app.get("/")
 async def root():
@@ -48,7 +130,8 @@ async def root():
     return {
         "message": "AI Chatbot API",
         "version": "1.0.0",
-        "status": "running"
+        "status": "running",
+        "deployment": "vercel"
     }
 
 @app.get("/health")
@@ -57,85 +140,106 @@ async def health_check():
     return {
         "status": "healthy",
         "deployment": "vercel",
-        "agents": {
-            "groq_agent": groq_agent is not None,
-            "google_ai_agent": google_ai_agent is not None
+        "services": {
+            "groq": bool(os.getenv("GROQ_API_KEY")),
+            "google_ai": bool(os.getenv("GOOGLE_AI_GENERATIVE"))
         }
     }
 
 @app.post("/api/chat/groq", response_model=ChatResponse)
 async def chat_groq(request: ChatRequest):
-    """Chat endpoint using FREE Groq API"""
+    """Chat endpoint using Groq API"""
     try:
-        logger.info(f"Received Groq chat request: {request.message}")
+        logger.info(f"Groq chat request: {request.message[:50]}...")
         
-        # Get response from Groq agent
+        # Create prompt
+        system_prompt = "You are a helpful AI assistant. Provide clear, useful responses."
         if request.brief_mode:
-            response = await groq_agent.run_brief(request.message)
-        else:
-            response = await groq_agent.run(request.message, request.session_id)
+            system_prompt += " Keep responses concise and direct."
+        
+        full_prompt = f"{system_prompt}\n\nUser: {request.message}\n\nAssistant:"
+        
+        # Generate response
+        response = await groq_service.generate_content(full_prompt)
         
         return ChatResponse(
             response=response,
             session_id=request.session_id or "vercel-session",
-            metadata={"agent_type": "groq_agent", "deployment": "vercel"}
+            metadata={
+                "agent_type": "groq",
+                "deployment": "vercel",
+                "brief_mode": request.brief_mode
+            }
         )
         
     except Exception as e:
-        logger.error(f"Error in Groq chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
+        logger.error(f"Groq chat error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/chat/google-ai", response_model=ChatResponse)
 async def chat_google_ai(request: ChatRequest):
-    """Chat endpoint using Google AI Studio"""
+    """Chat endpoint using Google AI"""
     try:
-        logger.info(f"Received Google AI chat request: {request.message}")
+        logger.info(f"Google AI chat request: {request.message[:50]}...")
         
-        # Get response from Google AI agent
+        # Create prompt
+        system_prompt = "You are a helpful AI assistant. Provide clear, useful responses."
         if request.brief_mode:
-            response = await google_ai_agent.run_brief(request.message)
-        else:
-            response = await google_ai_agent.run(request.message, request.session_id)
+            system_prompt += " Keep responses concise and direct."
+        
+        full_prompt = f"{system_prompt}\n\nUser: {request.message}\n\nAssistant:"
+        
+        # Generate response
+        response = await google_ai_service.generate_content(full_prompt)
         
         return ChatResponse(
             response=response,
             session_id=request.session_id or "vercel-session",
-            metadata={"agent_type": "google_ai_agent", "deployment": "vercel"}
+            metadata={
+                "agent_type": "google_ai",
+                "deployment": "vercel",
+                "brief_mode": request.brief_mode
+            }
         )
         
     except Exception as e:
-        logger.error(f"Error in Google AI chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
+        logger.error(f"Google AI chat error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/agents/test")
-async def test_agents():
-    """Test available agents"""
+@app.get("/api/test")
+async def test_apis():
+    """Test both AI APIs"""
     results = {}
     
+    # Test Groq
     try:
-        # Test Groq agent
-        if groq_agent:
-            test_response = await groq_agent.run("Hello, this is a test message")
-            results["groq_agent"] = {
+        if os.getenv("GROQ_API_KEY"):
+            test_response = await groq_service.generate_content("Say hello!")
+            results["groq"] = {
                 "status": "working",
-                "response": test_response[:100] + "..." if len(test_response) > 100 else test_response
+                "response": test_response[:50] + "..." if len(test_response) > 50 else test_response
             }
-        
-        # Test Google AI agent  
-        if google_ai_agent:
-            test_response = await google_ai_agent.run("Hello, this is a test message")
-            results["google_ai_agent"] = {
-                "status": "working", 
-                "response": test_response[:100] + "..." if len(test_response) > 100 else test_response
-            }
-            
+        else:
+            results["groq"] = {"status": "no_api_key"}
     except Exception as e:
-        logger.error(f"Error testing agents: {e}")
-        results["error"] = str(e)
+        results["groq"] = {"status": "error", "error": str(e)}
+    
+    # Test Google AI
+    try:
+        if os.getenv("GOOGLE_AI_GENERATIVE"):
+            test_response = await google_ai_service.generate_content("Say hello!")
+            results["google_ai"] = {
+                "status": "working", 
+                "response": test_response[:50] + "..." if len(test_response) > 50 else test_response
+            }
+        else:
+            results["google_ai"] = {"status": "no_api_key"}
+    except Exception as e:
+        results["google_ai"] = {"status": "error", "error": str(e)}
     
     return results
 
-# This is important for Vercel
+# For Vercel
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
