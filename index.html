@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Chatbot - Deployed on Vercel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: #ffffff;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+
+        .chat-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+        }
+
+        .agent-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .agent-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .agent-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .agent-button.active {
+            background: #4CAF50;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background: rgba(33, 150, 243, 0.8);
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .bot-message {
+            background: rgba(76, 175, 80, 0.8);
+            margin-right: auto;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 50px;
+            max-height: 120px;
+        }
+
+        .send-button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .send-button:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .send-button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            color: #4CAF50;
+            font-weight: 500;
+        }
+
+        .error {
+            text-align: center;
+            color: #ff6b6b;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .message {
+                max-width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Chatbot</h1>
+            <p>Successfully Deployed on Vercel! 🚀</p>
+        </div>
+
+        <div id="status" class="status" style="display: none;"></div>
+
+        <div class="chat-container">
+            <div class="agent-selector">
+                <button class="agent-button active" onclick="selectAgent('groq')">
+                    ⚡ Groq (Fast & Free)
+                </button>
+                <button class="agent-button" onclick="selectAgent('google-ai')">
+                    🧠 Google AI (Smart)
+                </button>
+            </div>
+
+            <div class="messages" id="messages">
+                <div class="bot-message">
+                    🎉 Welcome! Your AI chatbot is successfully deployed on Vercel! Choose an AI model above and start chatting!
+                </div>
+            </div>
+
+            <div class="input-area">
+                <textarea 
+                    id="messageInput" 
+                    class="message-input" 
+                    placeholder="Type your message here..."
+                    rows="1"
+                ></textarea>
+                <button id="sendButton" class="send-button" onclick="sendMessage()">
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAgent = 'groq';
+        let isLoading = false;
+
+        // API Configuration - automatically detects environment
+        const API_BASE = window.location.origin;
+
+        function selectAgent(agent) {
+            currentAgent = agent;
+            
+            // Update UI
+            document.querySelectorAll('.agent-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Add system message
+            addMessage(`🔄 Switched to ${agent === 'groq' ? 'Groq (Fast & Free)' : 'Google AI (Smart)'}`, 'bot');
+        }
+
+        function addMessage(content, type) {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.innerHTML = content;
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function showStatus(message, isError = false) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${isError ? 'error' : 'success'}`;
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
+
+        async function sendMessage() {
+            if (isLoading) return;
+            
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Show loading
+            isLoading = true;
+            document.getElementById('sendButton').disabled = true;
+            addMessage('<div class="loading">🤔 Thinking...</div>', 'bot');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/chat/${currentAgent}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        user_id: 'vercel-user',
+                        session_id: null,
+                        brief_mode: false
+                    })
+                });
+
+                // Remove loading message
+                const messages = document.getElementById('messages');
+                messages.removeChild(messages.lastChild);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    addMessage(data.response, 'bot');
+                    showStatus('✅ Message sent successfully!');
+                } else {
+                    const errorText = await response.text();
+                    addMessage(`❌ Error: ${errorText}`, 'bot');
+                    showStatus(`❌ API Error: ${response.status}`, true);
+                }
+            } catch (error) {
+                // Remove loading message
+                const messages = document.getElementById('messages');
+                if (messages.lastChild) {
+                    messages.removeChild(messages.lastChild);
+                }
+                
+                addMessage(`❌ Connection error: ${error.message}`, 'bot');
+                showStatus('❌ Connection failed - Check your API keys in Vercel environment variables', true);
+            } finally {
+                isLoading = false;
+                document.getElementById('sendButton').disabled = false;
+                input.focus();
+            }
+        }
+
+        // Handle Enter key
+        document.getElementById('messageInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Auto-resize textarea
+        document.getElementById('messageInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Test API connection on load
+        window.onload = function() {
+            document.getElementById('messageInput').focus();
+            
+            // Test API connection
+            fetch(`${API_BASE}/health`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'healthy') {
+                        addMessage('✅ Connected to AI services successfully!', 'bot');
+                        showStatus('✅ Deployment successful! All systems online.');
+                    } else {
+                        addMessage('⚠️ API services may be limited', 'bot');
+                        showStatus('⚠️ API services responding but with limitations', true);
+                    }
+                })
+                .catch(error => {
+                    addMessage('⚠️ API connection issues - Please check environment variables', 'bot');
+                    showStatus('❌ API connection failed - Check Vercel environment variables', true);
+                });
+        };
+    </script>
+</body>
+</html>
