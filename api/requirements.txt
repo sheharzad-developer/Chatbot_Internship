@@ -29,7 +29,6 @@ aiofiles==23.2.1
 tiktoken==0.7.0
 
 # Tool integration
-websockets==15.0.1
 jsonschema==4.24.0
 pyyaml==6.0.1
 tenacity==8.5.0
