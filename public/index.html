@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 AI Chatbot</title>
+    <title>🤖 AI Chatbot - Deployed on Vercel</title>
     <style>
         * {
             margin: 0;
@@ -38,6 +38,24 @@
             font-size: 2.5em;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
         }
 
         .chat-container {
@@ -179,8 +197,10 @@
     <div class="container">
         <div class="header">
             <h1>🤖 AI Chatbot</h1>
-            <p>Powered by Groq & Google AI - Deployed on Vercel</p>
+            <p>Successfully Deployed on Vercel! 🚀</p>
         </div>
+
+        <div id="status" class="status" style="display: none;"></div>
 
         <div class="chat-container">
             <div class="agent-selector">
@@ -194,7 +214,7 @@
 
             <div class="messages" id="messages">
                 <div class="bot-message">
-                    Welcome! I'm your AI assistant. Choose an AI model above and start chatting!
+                    🎉 Welcome! Your AI chatbot is successfully deployed on Vercel! Choose an AI model above and start chatting!
                 </div>
             </div>
 
@@ -216,7 +236,7 @@
         let currentAgent = 'groq';
         let isLoading = false;
 
-        // API Configuration
+        // API Configuration - automatically detects environment
         const API_BASE = window.location.origin;
 
         function selectAgent(agent) {
@@ -239,6 +259,17 @@
             messageDiv.innerHTML = content;
             messages.appendChild(messageDiv);
             messages.scrollTop = messages.scrollHeight;
+        }
+
+        function showStatus(message, isError = false) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${isError ? 'error' : 'success'}`;
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
         }
 
         async function sendMessage() {
@@ -279,16 +310,21 @@
                 if (response.ok) {
                     const data = await response.json();
                     addMessage(data.response, 'bot');
+                    showStatus('✅ Message sent successfully!');
                 } else {
                     const errorText = await response.text();
                     addMessage(`❌ Error: ${errorText}`, 'bot');
+                    showStatus(`❌ API Error: ${response.status}`, true);
                 }
             } catch (error) {
                 // Remove loading message
                 const messages = document.getElementById('messages');
-                messages.removeChild(messages.lastChild);
+                if (messages.lastChild) {
+                    messages.removeChild(messages.lastChild);
+                }
                 
                 addMessage(`❌ Connection error: ${error.message}`, 'bot');
+                showStatus('❌ Connection failed - Check your API keys in Vercel environment variables', true);
             } finally {
                 isLoading = false;
                 document.getElementById('sendButton').disabled = false;
@@ -310,7 +346,7 @@
             this.style.height = Math.min(this.scrollHeight, 120) + 'px';
         });
 
-        // Focus input on load
+        // Test API connection on load
         window.onload = function() {
             document.getElementById('messageInput').focus();
             
@@ -320,10 +356,15 @@
                 .then(data => {
                     if (data.status === 'healthy') {
                         addMessage('✅ Connected to AI services successfully!', 'bot');
+                        showStatus('✅ Deployment successful! All systems online.');
+                    } else {
+                        addMessage('⚠️ API services may be limited', 'bot');
+                        showStatus('⚠️ API services responding but with limitations', true);
                     }
                 })
-                .catch(() => {
-                    addMessage('⚠️ Connection to AI services may be limited', 'bot');
+                .catch(error => {
+                    addMessage('⚠️ API connection issues - Please check environment variables', 'bot');
+                    showStatus('❌ API connection failed - Check Vercel environment variables', true);
                 });
         };
     </script>
