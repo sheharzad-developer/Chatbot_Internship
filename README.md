@@ -1,4 +1,4 @@
-# 🤖 Reflect Agent AI - Chatbot Internship Project
+# 🤖 Chatbot Internship Project
 
 <img width="1394" height="968" alt="image" src="https://github.com/user-attachments/assets/18e489cd-c5d7-49bd-9d3c-422f5d50c534" />
 
