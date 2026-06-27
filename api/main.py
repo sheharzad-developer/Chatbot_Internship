@@ -81,7 +81,7 @@ class GoogleAIService:
         self.api_key = os.getenv("GOOGLE_AI_GENERATIVE", "")
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
     
-    async def generate_content(self, prompt: str, model: str = "gemini-1.5-flash", **kwargs) -> str:
+    async def generate_content(self, prompt: str, model: str = "gemini-2.5-flash", **kwargs) -> str:
         if not self.api_key:
             raise Exception("GOOGLE_AI_GENERATIVE not set in environment variables")
             

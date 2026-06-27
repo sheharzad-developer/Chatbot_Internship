@@ -11,7 +11,7 @@ from models.chat import (
     ToolAwareChatRequest, ToolAwareChatResponse, TenantChatRequest
 )
 from models.tenant import TenantInfoResponse, TenantHealthResponse
-from database.mongodb import db
+from database.supabase_db import db
 from agents.simple_agent import SimpleAgent
 from agents.gemini_agent import GeminiAgent
 from agents.deepseek_agent import DeepSeekAgent
@@ -221,20 +221,20 @@ async def root():
 async def health_check():
     """Enhanced health check endpoint"""
     try:
-        # Test MongoDB connection
+        # Test database connection
         test_session = await db.get_all_chat_sessions(limit=1)
-        
+
         # Test RAG service
         rag_stats = rag_service.get_stats() if rag_service else {}
-        
+
         # Check tenant service health
         tenant_health = {}
         for tenant_id in tenant_service.list_tenants():
             tenant_health[tenant_id] = await tenant_service.check_tenant_health(tenant_id)
-        
+
         return {
             "status": "healthy",
-            "mongodb": "connected",
+            "database": "supabase-postgres",
             "rag_system": rag_stats,
             "tenant_service": {
                 "tenants_loaded": len(tenant_service.list_tenants()),

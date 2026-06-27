@@ -21,7 +21,7 @@ class GoogleAIAgent:
             # Generate response with Google AI Studio (Free!)
             response = await self.google_ai_service.generate_content(
                 prompt=full_prompt,
-                model="gemini-1.5-flash",
+                model="gemini-2.5-flash",
                 max_output_tokens=800,
                 temperature=0.3
             )
@@ -45,7 +45,7 @@ class GoogleAIAgent:
             
             response = await self.google_ai_service.generate_content(
                 prompt=full_prompt,
-                model="gemini-1.5-flash",
+                model="gemini-2.5-flash",
                 max_output_tokens=200,
                 temperature=0.2
             )

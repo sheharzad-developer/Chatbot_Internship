@@ -17,7 +17,7 @@ class GoogleAIService:
     async def generate_content(
         self, 
         prompt: str, 
-        model: str = "gemini-1.5-flash",
+        model: str = "gemini-2.5-flash",
         max_output_tokens: Optional[int] = 1000,
         temperature: float = 0.3,
         **kwargs
@@ -67,7 +67,7 @@ class GoogleAIService:
         """Simple generation without complex parameters"""
         return await self.generate_content(
             prompt=f"Please provide a helpful response to: {message}",
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             max_output_tokens=500,
             temperature=0.3
         )

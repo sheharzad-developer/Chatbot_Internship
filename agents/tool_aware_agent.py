@@ -8,11 +8,22 @@ import time
 
 from langfuse import Langfuse
 try:
-    from langfuse.decorators import observe
+    # langfuse >= 3: observe lives at the top level
+    from langfuse import observe
 except ImportError:
-    # Fallback for older versions
-    def observe(func):
-        return func
+    try:
+        # older langfuse exposed it under decorators
+        from langfuse.decorators import observe
+    except ImportError:
+        # Fallback no-op decorator supporting both @observe and @observe(...)
+        def observe(*args, **kwargs):
+            if len(args) == 1 and callable(args[0]) and not kwargs:
+                return args[0]
+
+            def decorator(func):
+                return func
+
+            return decorator
 
 from config.settings import settings
 from models.chat import ToolCall, ToolCallResult, ChatMessage, MessageRole

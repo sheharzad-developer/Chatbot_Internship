@@ -49,5 +49,11 @@ Thumbs.db
 
 # Temporary files
 temp/
-tmp/ 
+tmp/
 .vercel
+
+# Local caches (never commit)
+.hf-cache/
+.pip-cache/
+.pip-tmp/
+node_modules/

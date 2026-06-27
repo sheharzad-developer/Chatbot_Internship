@@ -21,7 +21,7 @@ class GeminiAgent:
             # Use faster model and disable thinking for speed
             response = await self.gemini_service.generate_content(
                 prompt=full_prompt,
-                model="gemini-1.5-flash",  # Use faster model instead of 2.5-flash
+                model="gemini-2.5-flash",  # Use faster model instead of 2.5-flash
                 disable_thinking=True
             )
             

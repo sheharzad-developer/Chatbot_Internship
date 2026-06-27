@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 Tool-Aware Multi-Tenant Chatbot</title>
+    <title>🤖 AI Chatbot</title>
     <style>
         * {
             margin: 0;
@@ -484,8 +484,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>🤖 Tool-Aware Multi-Tenant Chatbot</h1>
-        <p>Advanced AI with Dynamic Tool Integration & Tenant Isolation</p>
+        <h1>🤖 AI Chatbot</h1>
     </div>
 
     <div class="container">
@@ -494,6 +493,20 @@
                 <h3>🏢 Organizations</h3>
                 <div id="tenantList">
                     <div class="loading">Loading tenants...</div>
+                </div>
+            </div>
+
+            <div class="tenant-selector">
+                <h3>🤖 Direct Models</h3>
+                <div id="directModelList">
+                    <div class="tenant-option" onclick="selectGemini()">
+                        <div class="tenant-name">✨ Gemini</div>
+                        <div class="tenant-details">Chat directly with Google Gemini (no tenant tools)</div>
+                        <div class="tenant-stats">
+                            <span>🤖 gemini-2.5-flash</span>
+                            <span>🔑 API key</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -606,21 +619,40 @@
             }
         }
 
+        // Direct (non-tenant) model: chat straight through /chat/gemini
+        function selectGemini() {
+            selectTenant({
+                tenant_id: 'gemini',
+                tenant_name: 'Gemini (Direct)',
+                description: 'Direct chat with Google Gemini (gemini-2.5-flash)',
+                llm_provider: 'gemini-2.5-flash',
+                tools_count: 0,
+                directEndpoint: '/chat/gemini'
+            });
+        }
+
         async function selectTenant(tenant) {
             currentTenant = tenant;
             currentSessionId = null;
-            
+
             // Update UI
             document.querySelectorAll('.tenant-option').forEach(el => el.classList.remove('active'));
-            event.target.closest('.tenant-option').classList.add('active');
-            
+            if (event && event.target) {
+                event.target.closest('.tenant-option').classList.add('active');
+            }
+
             document.getElementById('chatTitle').textContent = `${tenant.tenant_name} Chat`;
             document.getElementById('messageInput').placeholder = `Chat with ${tenant.tenant_name} (${tenant.llm_provider})...`;
             document.getElementById('messageInput').disabled = false;
             document.getElementById('sendButton').disabled = false;
-            
-            // Load tools for this tenant
-            await loadTenantTools(tenant.tenant_id);
+
+            // Load tools for this tenant (direct models have none)
+            if (tenant.directEndpoint) {
+                document.getElementById('toolsList').innerHTML = '<div class="no-tools">Direct model — no tenant tools</div>';
+                availableTools = [];
+            } else {
+                await loadTenantTools(tenant.tenant_id);
+            }
             
             // Clear chat
             clearChat();
@@ -720,7 +752,11 @@
                     brief_mode: false
                 };
                 
-                const response = await fetch(`${API_BASE}/tenants/${currentTenant.tenant_id}/chat`, {
+                const endpoint = currentTenant.directEndpoint
+                    ? `${API_BASE}${currentTenant.directEndpoint}`
+                    : `${API_BASE}/tenants/${currentTenant.tenant_id}/chat`;
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

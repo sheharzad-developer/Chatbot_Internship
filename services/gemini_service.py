@@ -15,9 +15,20 @@ class GeminiService:
         # Set the API key as environment variable for the client
         if settings.google_ai_generative:
             os.environ['GEMINI_API_KEY'] = settings.google_ai_generative
-        
-        # Initialize the client
-        self.client = genai.Client()
+
+        # Lazily constructed so the app can boot without a Google API key.
+        self._client = None
+
+    @property
+    def client(self):
+        if self._client is None:
+            if not settings.google_ai_generative:
+                raise RuntimeError(
+                    "GOOGLE_AI_GENERATIVE is not set. Add a Google Gemini API key "
+                    "to your .env to enable the Gemini agent."
+                )
+            self._client = genai.Client()
+        return self._client
         
     async def generate_content(
         self, 

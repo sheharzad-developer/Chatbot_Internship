@@ -1,0 +1,41 @@
+# Web framework
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+pydantic-settings
+aiofiles
+httpx
+requests
+websockets
+jsonschema
+pyyaml
+
+# Database
+motor
+pymongo
+redis
+
+# AI / LLM stack
+google-generativeai
+langchain-core
+langchain-google-genai
+langgraph
+langfuse
+tiktoken
+tenacity
+tavily-python
+
+# RAG / ML
+sentence-transformers
+scikit-learn
+numpy
+
+# Networking / utils
+aiohttp
+cryptography
+python-multipart
+
+# Supabase Postgres (chat store)
+asyncpg
+supabase

@@ -9,7 +9,11 @@ from pathlib import Path
 load_dotenv()
 
 class Settings(BaseSettings):
-    # MongoDB Configuration
+    # Supabase Configuration (chat session store, via Data API + secret key)
+    supabase_url: str = os.getenv("SUPABASE_URL", "")
+    supabase_secret_key: str = os.getenv("SUPABASE_SECRET_KEY", "")
+
+    # MongoDB Configuration (legacy / unused; kept for backward compatibility)
     mongodb_url: str = os.getenv("MONGODB_URL", "")
     mongodb_db_name: str = "chatbot_db"
     
