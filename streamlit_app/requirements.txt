@@ -1,0 +1,4 @@
+# Streamlit Community Cloud installs this file (it sits next to the app's entrypoint)
+streamlit
+httpx
+pyyaml

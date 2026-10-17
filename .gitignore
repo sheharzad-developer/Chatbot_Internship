@@ -61,3 +61,6 @@ node_modules/
 
 # Local SQLite data
 data/
+
+# Streamlit secrets
+.streamlit/secrets.toml
