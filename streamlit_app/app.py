@@ -101,31 +101,193 @@ def stream_groq(api_key, model, messages, system_prompt, temperature):
                     yield text
 
 
-st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
-st.title("🤖 AI Chatbot")
+# Mirrors the look of frontend/index.html: purple gradient, frosted-glass panels,
+# gradient user bubbles on the right and glass assistant bubbles on the left.
+CSS = """
+<style>
+.stApp {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-attachment: fixed;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+header[data-testid="stHeader"] { background: transparent; }
+[data-testid="stBottom"] > div, [data-testid="stBottomBlockContainer"] { background: transparent; }
+
+.app-header {
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+.app-header h1 { font-size: 2.5rem; font-weight: 700; margin: 0; padding: 0; color: #fff; }
+
+.chat-header {
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.chat-title { font-size: 1.3rem; font-weight: 600; }
+.model-pill {
+    background: rgba(76, 175, 80, 0.2);
+    border: 1px solid rgba(76, 175, 80, 0.5);
+    border-radius: 20px;
+    padding: 6px 14px;
+    color: #7ee787;
+    font-size: 0.85rem;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(15px);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+[data-testid="stSidebar"] h3 { color: #fff; font-size: 1.15rem; }
+
+/* Organization picker: radio options drawn as the original's tenant cards */
+[data-testid="stSidebar"] [role="radiogroup"] { gap: 10px; }
+[data-testid="stSidebar"] [role="radiogroup"] > label {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 14px;
+    margin: 0;
+    width: 100%;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+[data-testid="stSidebar"] [role="radiogroup"] > label:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+[data-testid="stSidebar"] [role="radiogroup"] > label:has(input:checked) {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: #ffffff;
+    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
+}
+[data-testid="stSidebar"] [role="radiogroup"] > label > div:first-child { display: none; }
+[data-testid="stSidebar"] [role="radiogroup"] p { font-weight: 700; color: #fff; }
+[data-testid="stSidebar"] [role="radiogroup"] [data-testid="stCaptionContainer"] p {
+    font-weight: 400; color: rgba(255, 255, 255, 0.8); font-size: 0.85rem;
+}
+
+/* Sidebar buttons, like the original's .button */
+[data-testid="stSidebar"] .stButton button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: #fff;
+}
+[data-testid="stSidebar"] .stButton button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #fff;
+}
+
+/* Chat bubbles */
+[data-testid="stChatMessage"] { background: transparent; padding: 0; margin: 12px 0; width: 100%; }
+[data-testid="stChatMessage"] [data-testid^="stChatMessageAvatar"] { display: none; }
+[data-testid="stChatMessageContent"] {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px 20px 20px 5px;
+    padding: 15px 20px;
+    max-width: 80%;
+    flex: 0 1 auto;
+    margin: 0 auto 0 0 !important;
+    color: #fff;
+}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) { flex-direction: row-reverse; }
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"] {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    border-radius: 20px 20px 5px 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    margin: 0 0 0 auto !important;
+}
+[data-testid="stChatMessageContent"] p, [data-testid="stChatMessageContent"] li { color: #fff; }
+[data-testid="stChatMessageContent"] code { background: rgba(0, 0, 0, 0.25); color: #fff; }
+
+/* Message input */
+[data-testid="stChatInput"] {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    backdrop-filter: blur(10px);
+}
+[data-testid="stChatInput"]:focus-within { border-color: rgba(255, 255, 255, 0.5); }
+[data-testid="stChatInput"] textarea { color: #fff; }
+[data-testid="stChatInput"] textarea::placeholder { color: rgba(255, 255, 255, 0.6); }
+[data-testid="stChatInputSubmitButton"] {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 50%;
+    color: #fff;
+}
+</style>
+"""
+
+WELCOME = (
+    "👋 Welcome to the Multi-Tenant Chatbot!\n\n"
+    "**Features:**  \n"
+    "🏢 Multi-tenant system prompts  \n"
+    "⚡ Fast hosted LLM  \n"
+    "🧠 Conversation memory\n\n"
+    "Pick an organization in the sidebar and ask me anything."
+)
+
+st.set_page_config(page_title="AI Chatbot", page_icon="🤖", layout="wide")
+st.markdown(CSS, unsafe_allow_html=True)
+st.markdown('<div class="app-header"><h1>🤖 AI Chatbot</h1></div>', unsafe_allow_html=True)
 
 if get_secret("GROQ_API_KEY"):
     api_key = get_secret("GROQ_API_KEY")
     model = get_secret("GROQ_MODEL", "openai/gpt-oss-120b")
+    provider = "Groq"
     stream_reply = stream_groq
 else:
     api_key = get_secret("GEMINI_API_KEY")
     model = get_secret("GEMINI_MODEL", "gemini-2.5-flash")
+    provider = "Gemini"
     stream_reply = stream_gemini
 tenants = load_tenants()
 
 with st.sidebar:
-    tenant_id = st.selectbox(
+    st.markdown("### 🏢 Organizations")
+    tenant_id = st.radio(
         "Organization",
         options=list(tenants),
         format_func=lambda t: tenants[t]["tenant_name"],
+        captions=[
+            f"{tenants[t].get('description', '')}  \n"
+            f"🌡️ temp {tenants[t].get('llm', {}).get('temperature', 0.7)} · ⚡ {provider}"
+            for t in tenants
+        ],
+        label_visibility="collapsed",
     )
     tenant = tenants[tenant_id]
-    st.caption(tenant.get("description", ""))
-    st.caption(f"Model: `{model}`")
-    if st.button("New chat", use_container_width=True):
+    st.write("")
+    if st.button("🗑️ Clear Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
+
+st.markdown(
+    f'<div class="chat-header"><div class="chat-title">💬 {tenant["tenant_name"]}</div>'
+    f'<div class="model-pill">⚡ {provider} · {model}</div></div>',
+    unsafe_allow_html=True,
+)
 
 if not api_key:
     st.error(
@@ -139,6 +301,10 @@ if not api_key:
 if st.session_state.get("tenant_id") != tenant_id:
     st.session_state.tenant_id = tenant_id
     st.session_state.messages = []
+
+if not st.session_state.messages:
+    with st.chat_message("assistant"):
+        st.markdown(WELCOME)
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
