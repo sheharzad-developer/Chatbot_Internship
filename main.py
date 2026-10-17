@@ -11,12 +11,8 @@ from models.chat import (
     ToolAwareChatRequest, ToolAwareChatResponse, TenantChatRequest
 )
 from models.tenant import TenantInfoResponse, TenantHealthResponse
-from database.supabase_db import db
-from agents.simple_agent import SimpleAgent
-from agents.gemini_agent import GeminiAgent
-from agents.deepseek_agent import DeepSeekAgent
-from agents.google_ai_agent import GoogleAIAgent
-from agents.groq_agent import GroqAgent
+from database.sqlite_db import db
+from agents.ollama_agent import OllamaAgent
 from agents.tool_aware_agent import ToolAwareAgent
 from services.rag_service import RAGService
 from services.tenant_service import tenant_service
@@ -29,11 +25,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Global instances for backward compatibility
-simple_agent = None
-gemini_agent = None
-deepseek_agent = None
-google_ai_agent = None
-groq_agent = None
+ollama_agent = None
 rag_service = None
 
 # New multi-tenant instances
@@ -42,13 +34,13 @@ tenant_agents: Dict[str, ToolAwareAgent] = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown logic"""
-    global simple_agent, gemini_agent, deepseek_agent, google_ai_agent, groq_agent, rag_service
+    global ollama_agent, rag_service
     
     # Startup
     logger.info("Starting up the Tool-Aware Multi-Tenant Chatbot...")
     
     try:
-        # Connect to MongoDB
+        # Open the local SQLite database
         await db.connect()
         
         # Initialize tenant service first
@@ -59,21 +51,16 @@ async def lifespan(app: FastAPI):
         rag_service = RAGService()
         logger.info("✅ RAG service initialized")
         
-        # Initialize backward-compatible agents
-        simple_agent = SimpleAgent()
-        logger.info("✅ Simple agent initialized")
-        
-        gemini_agent = GeminiAgent()
-        logger.info("✅ Gemini agent initialized")
-        
-        deepseek_agent = DeepSeekAgent()
-        logger.info("✅ DeepSeek agent initialized")
-        
-        google_ai_agent = GoogleAIAgent()
-        logger.info("✅ Google AI agent initialized (FREE!)")
-        
-        groq_agent = GroqAgent()
-        logger.info("✅ Groq agent initialized (FREE & FAST!)")
+        # Initialize the local Ollama agent
+        ollama_agent = OllamaAgent()
+        if await ollama_agent.test_connection():
+            logger.info(f"✅ Ollama agent initialized ({settings.ollama_model})")
+        else:
+            logger.warning(
+                f"⚠️ Ollama is not reachable at {settings.ollama_base_url} or model "
+                f"'{settings.ollama_model}' is not pulled. Run `ollama serve` and "
+                f"`ollama pull {settings.ollama_model}`."
+            )
         
         # Initialize tool-aware agents for each tenant
         await initialize_tenant_agents()
@@ -100,7 +87,7 @@ async def lifespan(app: FastAPI):
         # Shutdown tenant service
         await tenant_service.shutdown()
         
-        # Disconnect from MongoDB
+        # Close the SQLite database
         await db.disconnect()
         
         logger.info("Application shutdown completed")
@@ -143,31 +130,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Dependency functions for backward compatibility
-def get_simple_agent() -> SimpleAgent:
-    if simple_agent is None:
-        raise HTTPException(status_code=500, detail="Simple agent not initialized")
-    return simple_agent
-
-def get_gemini_agent() -> GeminiAgent:
-    if gemini_agent is None:
-        raise HTTPException(status_code=500, detail="Gemini agent not initialized")
-    return gemini_agent
-
-def get_deepseek_agent() -> DeepSeekAgent:
-    if deepseek_agent is None:
-        raise HTTPException(status_code=500, detail="DeepSeek agent not initialized")
-    return deepseek_agent
-
-def get_google_ai_agent() -> GoogleAIAgent:
-    if google_ai_agent is None:
-        raise HTTPException(status_code=500, detail="Google AI agent not initialized")
-    return google_ai_agent
-
-def get_groq_agent() -> GroqAgent:
-    if groq_agent is None:
-        raise HTTPException(status_code=500, detail="Groq agent not initialized")
-    return groq_agent
+# Dependency functions
+def get_ollama_agent() -> OllamaAgent:
+    if ollama_agent is None:
+        raise HTTPException(status_code=500, detail="Ollama agent not initialized")
+    return ollama_agent
 
 def get_rag_service() -> RAGService:
     if rag_service is None:
@@ -222,7 +189,10 @@ async def health_check():
     """Enhanced health check endpoint"""
     try:
         # Test database connection
-        test_session = await db.get_all_chat_sessions(limit=1)
+        session_count = await db.count_chat_sessions()
+
+        # Test Ollama
+        ollama_ready = await ollama_agent.test_connection() if ollama_agent else False
 
         # Test RAG service
         rag_stats = rag_service.get_stats() if rag_service else {}
@@ -234,18 +204,15 @@ async def health_check():
 
         return {
             "status": "healthy",
-            "database": "supabase-postgres",
+            "database": {"type": "sqlite", "path": settings.database_path, "sessions": session_count},
+            "llm": {"provider": "ollama", "model": settings.ollama_model, "ready": ollama_ready},
             "rag_system": rag_stats,
             "tenant_service": {
                 "tenants_loaded": len(tenant_service.list_tenants()),
                 "tenant_health": tenant_health
             },
-            "legacy_services": {
-                "simple_agent": simple_agent is not None,
-                "gemini_agent": gemini_agent is not None,
-                "deepseek_agent": deepseek_agent is not None,
-                "google_ai_agent": google_ai_agent is not None,
-                "groq_agent": groq_agent is not None,
+            "services": {
+                "ollama_agent": ollama_agent is not None,
                 "rag_service": rag_service is not None
             },
             "tool_aware_agents": {
@@ -405,18 +372,16 @@ async def list_tenant_tools(tenant_id: str):
 @app.post("/chat/fast", response_model=ChatResponse)
 async def fast_chat(
     request: ChatRequest,
-    agent: SimpleAgent = Depends(get_simple_agent)
+    agent: OllamaAgent = Depends(get_ollama_agent)
 ):
-    """Ultra-fast chat endpoint - no database operations for maximum speed"""
+    """Fast chat endpoint - no database operations, no history"""
     try:
-        # Skip all database operations for speed
-        # Get response from simple agent directly
-        response = await agent.run(request.message)
+        response = await agent.run(request.message, brief_mode=request.brief_mode)
         
         return ChatResponse(
             response=response,
             session_id="fast-mode",  # Static session ID
-            metadata={"agent_type": "simple_agent", "mode": "fast"}
+            metadata={"agent_type": "ollama", "model": settings.ollama_model, "mode": "fast"}
         )
         
     except Exception as e:
@@ -424,33 +389,34 @@ async def fast_chat(
         raise HTTPException(status_code=500, detail=f"Fast chat error: {str(e)}")
 
 @app.post("/chat", response_model=ChatResponse)
+@app.post("/chat/ollama", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
-    agent: SimpleAgent = Depends(get_simple_agent)
+    agent: OllamaAgent = Depends(get_ollama_agent)
 ):
-    """Main chat endpoint"""
+    """Main chat endpoint - local Ollama model with history saved to SQLite"""
     try:
         logger.info(f"Received chat request: {request.message}")
         
         # Create or get session
         session_id = request.session_id
-        if not session_id:
+        session = await db.get_chat_session(session_id) if session_id else None
+        if not session:
             session_id = await db.create_chat_session(
                 user_id=request.user_id,
-                title=f"Chat about: {request.message[:50]}..."
+                title=f"Chat: {request.message[:50]}..."
             )
         
-        # Add user message to session
+        # Get response from Ollama, with earlier turns as context
+        history = session.messages if session else []
+        response = await agent.run(request.message, history, brief_mode=request.brief_mode)
+        
+        # Save both sides of the exchange
         await db.add_message_to_session(
             session_id=session_id,
             role=MessageRole.USER,
             content=request.message
         )
-        
-        # Get response from reflect agent
-        response = await agent.run(request.message, session_id)
-        
-        # Add assistant response to session
         await db.add_message_to_session(
             session_id=session_id,
             role=MessageRole.ASSISTANT,
@@ -460,315 +426,30 @@ async def chat(
         return ChatResponse(
             response=response,
             session_id=session_id,
-            metadata={"agent_type": "simple_agent"}
+            metadata={"agent_type": "ollama", "model": settings.ollama_model, "brief_mode": request.brief_mode}
         )
         
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 
-@app.post("/chat/gemini", response_model=ChatResponse)
-async def chat_gemini(
-    request: ChatRequest,
-    agent: GeminiAgent = Depends(get_gemini_agent)
-):
-    """Chat endpoint using Google Gemini agent"""
-    try:
-        logger.info(f"Received Gemini chat request: {request.message}")
-        
-        # Create or get session
-        session_id = request.session_id
-        if not session_id:
-            session_id = await db.create_chat_session(
-                user_id=request.user_id,
-                title=f"Gemini Chat: {request.message[:50]}..."
-            )
-        
-        # Add user message to session
-        await db.add_message_to_session(
-            session_id=session_id,
-            role=MessageRole.USER,
-            content=request.message
-        )
-        
-        # Get response from Gemini agent
-        response = await agent.run(request.message, session_id)
-        
-        # Add assistant response to session
-        await db.add_message_to_session(
-            session_id=session_id,
-            role=MessageRole.ASSISTANT,
-            content=response
-        )
-        
-        return ChatResponse(
-            response=response,
-            session_id=session_id,
-            metadata={"agent_type": "gemini_agent"}
-        )
-        
-    except Exception as e:
-        logger.error(f"Error in Gemini chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Gemini chat error: {str(e)}")
-
-@app.post("/chat/deepseek", response_model=ChatResponse)
-async def chat_deepseek(
-    request: ChatRequest,
-    agent: DeepSeekAgent = Depends(get_deepseek_agent)
-):
-    """Chat endpoint using DeepSeek agent"""
-    try:
-        logger.info(f"Received DeepSeek chat request: {request.message}")
-        
-        # Create or get session
-        session_id = request.session_id
-        if not session_id:
-            session_id = await db.create_chat_session(
-                user_id=request.user_id,
-                title=f"DeepSeek Chat: {request.message[:50]}..."
-            )
-        
-        # Add user message to session
-        await db.add_message_to_session(
-            session_id=session_id,
-            role=MessageRole.USER,
-            content=request.message
-        )
-        
-        # Get response from DeepSeek agent - use brief mode if client prefers short responses
-        if request.brief_mode:
-            response = await agent.run_brief(request.message)
-        else:
-            response = await agent.run(request.message, session_id)
-        
-        # Add assistant response to session
-        await db.add_message_to_session(
-            session_id=session_id,
-            role=MessageRole.ASSISTANT,
-            content=response
-        )
-        
-        return ChatResponse(
-            response=response,
-            session_id=session_id,
-            metadata={"agent_type": "deepseek_agent", "brief_mode": request.brief_mode}
-        )
-        
-    except Exception as e:
-        logger.error(f"Error in DeepSeek chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"DeepSeek chat error: {str(e)}")
-
-@app.post("/chat/google-ai", response_model=ChatResponse)
-async def chat_google_ai(
-    request: ChatRequest,
-    agent: GoogleAIAgent = Depends(get_google_ai_agent)
-):
-    """Chat endpoint using FREE Google AI Studio"""
-    try:
-        logger.info(f"Received Google AI chat request: {request.message}")
-        
-        # Create or get session
-        session_id = request.session_id
-        if not session_id:
-            session_id = await db.create_chat_session(
-                user_id=request.user_id,
-                title=f"Google AI Chat: {request.message[:50]}..."
-            )
-        
-        # Add user message to session
-        await db.add_message_to_session(
-            session_id=session_id,
-            role=MessageRole.USER,
-            content=request.message
-        )
-        
-        # Get response from Google AI agent - use brief mode if requested
-        if request.brief_mode:
-            response = await agent.run_brief(request.message)
-        else:
-            response = await agent.run(request.message, session_id)
-        
-        # Add assistant response to session
-        await db.add_message_to_session(
-            session_id=session_id,
-            role=MessageRole.ASSISTANT,
-            content=response
-        )
-        
-        return ChatResponse(
-            response=response,
-            session_id=session_id,
-            metadata={"agent_type": "google_ai_agent", "brief_mode": request.brief_mode, "cost": "FREE"}
-        )
-        
-    except Exception as e:
-        logger.error(f"Error in Google AI chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Google AI chat error: {str(e)}")
-
-@app.post("/chat/groq", response_model=ChatResponse)
-async def chat_groq(
-    request: ChatRequest,
-    agent: GroqAgent = Depends(get_groq_agent)
-):
-    """Chat endpoint using FREE Groq API (Lightning Fast!)"""
-    try:
-        logger.info(f"Received Groq chat request: {request.message}")
-        
-        # Create or get session
-        session_id = request.session_id
-        if not session_id:
-            session_id = await db.create_chat_session(
-                user_id=request.user_id,
-                title=f"Groq Chat: {request.message[:50]}..."
-            )
-        
-        # Add user message to session
-        await db.add_message_to_session(
-            session_id=session_id,
-            role=MessageRole.USER,
-            content=request.message
-        )
-        
-        # Get response from Groq agent - use brief mode if requested
-        if request.brief_mode:
-            response = await agent.run_brief(request.message)
-        else:
-            response = await agent.run(request.message, session_id)
-        
-        # Add assistant response to session
-        await db.add_message_to_session(
-            session_id=session_id,
-            role=MessageRole.ASSISTANT,
-            content=response
-        )
-        
-        return ChatResponse(
-            response=response,
-            session_id=session_id,
-            metadata={"agent_type": "groq_agent", "brief_mode": request.brief_mode, "cost": "FREE"}
-        )
-        
-    except Exception as e:
-        logger.error(f"Error in Groq chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Groq chat error: {str(e)}")
-
-@app.post("/chat/agent")
-async def chat_with_agent_selection(
-    request: ChatRequest,
-    agent_type: str = Query(default="groq", description="Agent type: 'simple', 'gemini', 'deepseek', 'google-ai', or 'groq'")
-):
-    """Chat endpoint with agent selection"""
-    try:
-        if agent_type == "gemini":
-            if gemini_agent is None:
-                raise HTTPException(status_code=500, detail="Gemini agent not available")
-            agent = gemini_agent
-        elif agent_type == "deepseek":
-            if deepseek_agent is None:
-                raise HTTPException(status_code=500, detail="DeepSeek agent not available")
-            agent = deepseek_agent
-        elif agent_type == "google-ai":
-            if google_ai_agent is None:
-                raise HTTPException(status_code=500, detail="Google AI agent not available")
-            agent = google_ai_agent
-        elif agent_type == "groq":
-            if groq_agent is None:
-                raise HTTPException(status_code=500, detail="Groq agent not available")
-            agent = groq_agent
-        else:
-            if simple_agent is None:
-                raise HTTPException(status_code=500, detail="Simple agent not available") 
-            agent = simple_agent
-        
-        logger.info(f"Received chat request for {agent_type} agent: {request.message}")
-        
-        # Create or get session
-        session_id = request.session_id
-        if not session_id:
-            session_id = await db.create_chat_session(
-                user_id=request.user_id,
-                title=f"{agent_type.title()} Chat: {request.message[:50]}..."
-            )
-        
-        # Add user message to session
-        await db.add_message_to_session(
-            session_id=session_id,
-            role=MessageRole.USER,
-            content=request.message
-        )
-        
-        # Get response from selected agent - handle brief mode for DeepSeek, Google AI, and Groq
-        if (agent_type == "deepseek" or agent_type == "google-ai" or agent_type == "groq") and request.brief_mode:
-            response = await agent.run_brief(request.message)
-        else:
-            response = await agent.run(request.message, session_id)
-        
-        # Add assistant response to session
-        await db.add_message_to_session(
-            session_id=session_id,
-            role=MessageRole.ASSISTANT,
-            content=response
-        )
-        
-        return ChatResponse(
-            response=response,
-            session_id=session_id,
-            metadata={"agent_type": f"{agent_type}_agent", "brief_mode": request.brief_mode if agent_type in ["deepseek", "google-ai", "groq"] else False, "cost": "FREE" if agent_type in ["google-ai", "groq"] else "PAID"}
-        )
-        
-    except Exception as e:
-        logger.error(f"Error in agent selection chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
-
 @app.get("/agents/test")
 async def test_agents():
-    """Test all available agents"""
-    results = {}
+    """Test the local Ollama agent"""
+    if not ollama_agent:
+        return {"ollama_agent": {"status": "not_available"}}
     
-    try:
-        # Test simple agent
-        if simple_agent:
-            simple_response = await simple_agent.run("Hello, this is a test message")
-            results["simple_agent"] = {
-                "status": "working",
-                "response": simple_response[:100] + "..." if len(simple_response) > 100 else simple_response
-            }
-        else:
-            results["simple_agent"] = {"status": "not_available"}
-        
-        # Test Gemini agent
-        if gemini_agent:
-            gemini_test = gemini_agent.test_connection()
-            if gemini_test:
-                gemini_response = await gemini_agent.run("Hello, this is a test message")
-                results["gemini_agent"] = {
-                    "status": "working",
-                    "response": gemini_response[:100] + "..." if len(gemini_response) > 100 else gemini_response
-                }
-            else:
-                results["gemini_agent"] = {"status": "connection_failed"}
-        else:
-            results["gemini_agent"] = {"status": "not_available"}
-        
-        # Test DeepSeek agent
-        if deepseek_agent:
-            deepseek_test = deepseek_agent.test_connection()
-            if deepseek_test:
-                deepseek_response = await deepseek_agent.run("Hello, this is a test message")
-                results["deepseek_agent"] = {
-                    "status": "working",
-                    "response": deepseek_response[:100] + "..." if len(deepseek_response) > 100 else deepseek_response
-                }
-            else:
-                results["deepseek_agent"] = {"status": "connection_failed"}
-        else:
-            results["deepseek_agent"] = {"status": "not_available"}
+    if not await ollama_agent.test_connection():
+        return {"ollama_agent": {"status": "connection_failed", "model": settings.ollama_model}}
     
-    except Exception as e:
-        logger.error(f"Error testing agents: {e}")
-        results["error"] = str(e)
-    
-    return results
+    response = await ollama_agent.run("Hello, this is a test message")
+    return {
+        "ollama_agent": {
+            "status": "working",
+            "model": settings.ollama_model,
+            "response": response[:100] + "..." if len(response) > 100 else response
+        }
+    }
 
 @app.get("/chat/history", response_model=ChatHistoryResponse)
 async def get_chat_history(user_id: Optional[str] = None, limit: int = 50):
@@ -799,7 +480,7 @@ async def get_chat_history(user_id: Optional[str] = None, limit: int = 50):
 async def debug_db_test():
     """Debug endpoint to test database connection"""
     try:
-        count = await db.chat_sessions_collection.count_documents({})
+        count = await db.count_chat_sessions()
         sessions = await db.get_all_chat_sessions(2)
         return {
             "total_documents": count,

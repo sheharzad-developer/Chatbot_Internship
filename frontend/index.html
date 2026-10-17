@@ -499,12 +499,12 @@
             <div class="tenant-selector">
                 <h3>🤖 Direct Models</h3>
                 <div id="directModelList">
-                    <div class="tenant-option" onclick="selectGemini()">
-                        <div class="tenant-name">✨ Gemini</div>
-                        <div class="tenant-details">Chat directly with Google Gemini (no tenant tools)</div>
+                    <div class="tenant-option" onclick="selectOllama()">
+                        <div class="tenant-name">🦙 Ollama</div>
+                        <div class="tenant-details">Chat directly with your local Ollama model (no tenant tools)</div>
                         <div class="tenant-stats">
-                            <span>🤖 gemini-2.5-flash</span>
-                            <span>🔑 API key</span>
+                            <span>🤖 llama3.2</span>
+                            <span>💻 Local</span>
                         </div>
                     </div>
                 </div>
@@ -619,15 +619,15 @@
             }
         }
 
-        // Direct (non-tenant) model: chat straight through /chat/gemini
-        function selectGemini() {
+        // Direct (non-tenant) model: chat straight through /chat/ollama
+        function selectOllama() {
             selectTenant({
-                tenant_id: 'gemini',
-                tenant_name: 'Gemini (Direct)',
-                description: 'Direct chat with Google Gemini (gemini-2.5-flash)',
-                llm_provider: 'gemini-2.5-flash',
+                tenant_id: 'ollama',
+                tenant_name: 'Ollama (Local)',
+                description: 'Direct chat with your local Ollama model',
+                llm_provider: 'ollama',
                 tools_count: 0,
-                directEndpoint: '/chat/gemini'
+                directEndpoint: '/chat/ollama'
             });
         }
 
@@ -855,7 +855,8 @@
 
                     statusDisplay.innerHTML = `✅ System Status: ${data.status.toUpperCase()}
 
-🔌 MongoDB: ${data.mongodb}
+🗄️ Database: ${data.database?.type} (${data.database?.sessions ?? 0} sessions)
+🦙 Ollama: ${data.llm?.model} ${data.llm?.ready ? '✅ ready' : '❌ not reachable'}
 📚 RAG Documents: ${data.rag_system?.total_documents || 0}
 🏢 Tenants: ${Object.keys(tenants).length}
 🔧 Tool Agents: ${data.tool_aware_agents?.total_agents || 0}

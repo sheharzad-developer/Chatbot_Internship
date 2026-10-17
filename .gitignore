@@ -26,6 +26,7 @@ MANIFEST
 
 # Virtual environments
 venv/
+.venv/
 env/
 ENV/
 
@@ -57,3 +58,6 @@ tmp/
 .pip-cache/
 .pip-tmp/
 node_modules/
+
+# Local SQLite data
+data/

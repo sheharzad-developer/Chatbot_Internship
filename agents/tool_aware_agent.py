@@ -31,11 +31,8 @@ from models.tenant import TenantConfig
 from services.mcp_client import MCPClient
 from services.tenant_service import tenant_service
 
-# Import LLM providers
-from services.groq_service import GroqService
-from services.google_ai_service import GoogleAIService
-from services.deepseek_service import DeepSeekService
-from services.gemini_service import GeminiService
+# Import LLM provider
+from services.ollama_service import OllamaService
 
 logger = logging.getLogger(__name__)
 
@@ -92,18 +89,8 @@ class ToolAwareAgent:
         provider = self.tenant_config.llm.provider
         
         try:
-            if provider == "groq":
-                self.llm_service = GroqService()
-            elif provider == "google-ai":
-                self.llm_service = GoogleAIService()
-            elif provider == "deepseek":
-                self.llm_service = DeepSeekService()
-            elif provider == "gemini":
-                self.llm_service = GeminiService()
-            else:
-                logger.warning(f"Unknown LLM provider {provider} for tenant {self.tenant_id}")
-                # Default to Groq
-                self.llm_service = GroqService()
+            # Every tenant runs on the local Ollama server, using its configured model
+            self.llm_service = OllamaService(model=self.tenant_config.llm.model)
             
             logger.info(f"Initialized {provider} LLM service for tenant {self.tenant_id}")
             

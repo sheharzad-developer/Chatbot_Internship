@@ -8,11 +8,7 @@ class AuthType(str, Enum):
     BEARER_TOKEN = "bearer_token"
 
 class LLMProvider(str, Enum):
-    GROQ = "groq"
-    GOOGLE_AI = "google-ai"
-    DEEPSEEK = "deepseek"
-    GEMINI = "gemini"
-    SIMPLE = "simple"
+    OLLAMA = "ollama"
 
 class MCPServerAuth(BaseModel):
     type: AuthType = AuthType.NONE
@@ -37,8 +33,8 @@ class ToolsConfig(BaseModel):
     tool_prompts: Optional[Dict[str, str]] = {}
 
 class LLMConfig(BaseModel):
-    provider: LLMProvider = LLMProvider.GROQ
-    model: str = "llama3-8b-8192"
+    provider: LLMProvider = LLMProvider.OLLAMA
+    model: str = "llama3.2"
     temperature: float = 0.7
     max_tokens: int = 1000
     brief_mode_max_tokens: int = 200

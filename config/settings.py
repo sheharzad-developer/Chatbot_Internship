@@ -9,13 +9,13 @@ from pathlib import Path
 load_dotenv()
 
 class Settings(BaseSettings):
-    # Supabase Configuration (chat session store, via Data API + secret key)
-    supabase_url: str = os.getenv("SUPABASE_URL", "")
-    supabase_secret_key: str = os.getenv("SUPABASE_SECRET_KEY", "")
+    # Local SQLite database (chat session store)
+    database_path: str = os.getenv("DATABASE_PATH", "data/chatbot.db")
 
-    # MongoDB Configuration (legacy / unused; kept for backward compatibility)
-    mongodb_url: str = os.getenv("MONGODB_URL", "")
-    mongodb_db_name: str = "chatbot_db"
+    # Ollama (local LLM server)
+    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.2")
+    ollama_timeout: float = float(os.getenv("OLLAMA_TIMEOUT", "120"))
     
     # Redis Configuration (for tenant isolation and caching)
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
@@ -30,20 +30,6 @@ class Settings(BaseSettings):
     langfuse_public_key: str = os.getenv("LANGFUSE_PUBLIC_KEY", "")
     langfuse_host: str = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
     langfuse_release: str = os.getenv("LANGFUSE_RELEASE", "production")
-    
-    # Google AI Configuration
-    google_ai_generative: str = os.getenv("GOOGLE_AI_GENERATIVE", "")
-    
-    # DeepSeek API Configuration
-    deepseek_api_key: str = os.getenv("DEEPSEEK_API_KEY", "")
-    deepseek_base_url: str = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-    
-    # Groq API settings (FREE!)
-    groq_api_key: str = os.getenv("GROQ_API_KEY", "")
-    groq_base_url: str = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
-    
-    # XAI Configuration
-    xai_api_key: str = os.getenv("XAI_API_KEY", "")
     
     # Multi-Tenant Configuration
     tenant_config_path: str = os.getenv("TENANT_CONFIG_PATH", "config/tenants")

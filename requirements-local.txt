@@ -11,17 +11,11 @@ websockets
 jsonschema
 pyyaml
 
-# Database
-motor
-pymongo
+# Cache (optional, for tenant isolation)
 redis
 
-# AI / LLM stack
-google-generativeai
-langchain-core
-langchain-google-genai
-langgraph
-langfuse
+# LLM: local Ollama server is called over HTTP (httpx) — no SDK needed
+langfuse<3  # agents use the v2 tracing API
 tiktoken
 tenacity
 tavily-python
@@ -36,6 +30,4 @@ aiohttp
 cryptography
 python-multipart
 
-# Supabase Postgres (chat store)
-asyncpg
-supabase
+# Database: SQLite ships with Python — nothing to install

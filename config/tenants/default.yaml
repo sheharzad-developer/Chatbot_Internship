@@ -38,8 +38,8 @@ tools:
 
 # LLM Configuration
 llm:
-  provider: "groq"  # groq, google-ai, deepseek, gemini, simple
-  model: "llama3-8b-8192"
+  provider: "ollama"  # local model served by Ollama
+  model: "llama3.2"
   temperature: 0.7
   max_tokens: 1000
   brief_mode_max_tokens: 200

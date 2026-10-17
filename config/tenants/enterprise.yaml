@@ -45,8 +45,8 @@ tools:
 
 # LLM Configuration
 llm:
-  provider: "deepseek"  # More powerful model for enterprise
-  model: "deepseek-chat"
+  provider: "ollama"  # local model served by Ollama
+  model: "llama3.2"
   temperature: 0.3  # Lower temperature for more consistent responses
   max_tokens: 2000
   brief_mode_max_tokens: 300
