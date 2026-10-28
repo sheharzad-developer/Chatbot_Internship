@@ -30,12 +30,12 @@ def main():
     print("🔍 Checking backend status...")
     if not check_backend():
         print("\n⚠️  Backend not detected. Please start the backend first:")
-        print("   uvicorn main:app --host 0.0.0.0 --port 8001")
+        print("   cd backend && ../.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8001")
         print("\nContinuing to start frontend anyway...")
         time.sleep(2)
     
     # Start the HTML frontend server
-    frontend_script = Path(__file__).parent / "frontend" / "server.py"
+    frontend_script = Path(__file__).parent / "server.py"
     
     try:
         print(f"\n🌐 Starting HTML frontend server...")

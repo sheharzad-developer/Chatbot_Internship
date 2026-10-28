@@ -234,7 +234,42 @@
             max-width: 80%;
             word-wrap: break-word;
             border: 1px solid rgba(255, 255, 255, 0.2);
+            line-height: 1.55;
         }
+
+        .bot-message > :first-child { margin-top: 0; }
+        .bot-message > :last-child { margin-bottom: 0; }
+        .bot-message p { margin: 0 0 10px; }
+        .bot-message h1, .bot-message h2, .bot-message h3, .bot-message h4 {
+            margin: 16px 0 8px;
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+        .bot-message ul, .bot-message ol { margin: 0 0 10px; padding-left: 22px; }
+        .bot-message li { margin: 4px 0; }
+        .bot-message strong { font-weight: 600; }
+        .bot-message code {
+            background: rgba(0, 0, 0, 0.25);
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .bot-message pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        .bot-message pre code { background: none; padding: 0; }
+        .bot-message .table-wrap { overflow-x: auto; margin: 0 0 10px; }
+        .bot-message table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+        .bot-message th, .bot-message td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 10px;
+            text-align: left;
+        }
+        .bot-message th { background: rgba(255, 255, 255, 0.1); font-weight: 600; }
+        .bot-message a { color: #c3cfff; }
 
         .tool-call-container {
             background: rgba(76, 175, 80, 0.15);
@@ -564,6 +599,8 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
     <script>
         let currentTenant = null;
         let currentSessionId = null;
@@ -789,7 +826,7 @@
                     }
                     
                     // Add bot response
-                    addMessage(`<div class="bot-message">${escapeHtml(data.response)}</div>`);
+                    addMessage(`<div class="bot-message">${renderMarkdown(data.response)}</div>`);
                     
                     // Update chat history
                     loadChatHistory();
@@ -832,6 +869,15 @@
             if (message) {
                 message.remove();
             }
+        }
+
+        // Render the model's Markdown as sanitized HTML; fall back to plain text if the CDN didn't load
+        function renderMarkdown(text) {
+            if (!window.marked || !window.DOMPurify) {
+                return `<div style="white-space: pre-wrap;">${escapeHtml(text)}</div>`;
+            }
+            const html = DOMPurify.sanitize(marked.parse(text || '', { gfm: true, breaks: true }));
+            return html.replace(/<table>/g, '<div class="table-wrap"><table>').replace(/<\/table>/g, '</table></div>');
         }
 
         function escapeHtml(text) {
@@ -942,7 +988,7 @@ Tenant Health:`;
                 if (msg.role === 'user') {
                     addMessage(`<div class="user-message">${escapeHtml(msg.content)}</div>`);
                 } else if (msg.role === 'assistant') {
-                    addMessage(`<div class="bot-message">${escapeHtml(msg.content)}</div>`);
+                    addMessage(`<div class="bot-message">${renderMarkdown(msg.content)}</div>`);
                 }
             });
             

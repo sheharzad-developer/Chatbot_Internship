@@ -133,14 +133,14 @@ class ToolAwareAgent:
                 }
             )
             
-            # Build system prompt
-            system_prompt = self._build_system_prompt(brief_mode, enable_tools)
-            
             # Get available tools
             available_tools = []
             if enable_tools and self.mcp_client and self.tenant_config.tools.enabled:
                 available_tools = self._get_filtered_tools(allowed_tools)
-            
+
+            # Build system prompt (only mentions tools that are actually connected)
+            system_prompt = self._build_system_prompt(brief_mode, available_tools)
+
             # Build messages for LLM
             messages = [
                 {"role": "system", "content": system_prompt},
@@ -228,22 +228,43 @@ class ToolAwareAgent:
             
             return error_response, [], {"error": str(e), "tenant_id": self.tenant_id}
     
-    def _build_system_prompt(self, brief_mode: bool, enable_tools: bool) -> str:
+    def _build_system_prompt(self, brief_mode: bool, available_tools: List[Dict]) -> str:
         """Build the system prompt based on tenant configuration and settings"""
         base_prompt = self.tenant_config.system_prompt
-        
+
         if brief_mode:
             base_prompt += "\n\nIMPORTANT: Provide very brief, concise responses. Keep answers short and to the point."
-        
-        if enable_tools and self.tenant_config.tools.enabled:
-            base_prompt += "\n\nYou have access to tools that can help you provide accurate information. When appropriate, use these tools to enhance your responses. Always explain what tools you're using and why."
-            
-            # Add tool-specific prompts
-            if self.tenant_config.tools.tool_prompts:
+
+        if available_tools:
+            base_prompt += "\n\nYou have access to tools that can help you provide accurate information. Use a tool only when it is needed."
+
+            # Add tool-specific prompts, only for tools that are actually connected
+            tool_names = {tool["function"]["name"] for tool in available_tools}
+            tool_prompts = {
+                name: prompt
+                for name, prompt in (self.tenant_config.tools.tool_prompts or {}).items()
+                if name in tool_names
+            }
+            if tool_prompts:
                 base_prompt += "\n\nTool-specific guidance:"
-                for tool_name, prompt in self.tenant_config.tools.tool_prompts.items():
+                for tool_name, prompt in tool_prompts.items():
                     base_prompt += f"\n- {tool_name}: {prompt}"
-        
+        else:
+            # Without this, the model role-plays tool calls and invents their results
+            base_prompt += (
+                "\n\nIMPORTANT: No tools, internal databases or enterprise systems are connected right now. "
+                "Answer from your general knowledge only. Never say you are using a tool, and never invent "
+                "search results, internal company figures, policy or compliance checks. If a question needs "
+                "internal company data, say you don't have access to it. When prices or costs would help "
+                "(hotels, flights, trips, products), do include typical price ranges from general knowledge, "
+                "label them as approximate, and suggest checking a live source for current prices."
+            )
+
+        base_prompt += (
+            "\n\nFormat answers in clean Markdown: a one-line intro, short headings or numbered lists "
+            "where they help, and tables only for real comparisons. Keep it concise."
+        )
+
         return base_prompt
     
     def _get_filtered_tools(self, allowed_tools: Optional[List[str]]) -> List[Dict]:

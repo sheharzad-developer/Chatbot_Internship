@@ -6,7 +6,11 @@ from services.ollama_service import OllamaService
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = "You are a helpful AI assistant. Provide clear, useful, and engaging responses."
+SYSTEM_PROMPT = """You are a helpful AI assistant. Provide clear, useful, and engaging responses.
+- Format answers in clean Markdown: short headings, lists, and tables only for real comparisons.
+- When prices or costs would help (hotels, flights, trips, products), include typical price ranges,
+  label them as approximate, and suggest checking a live source for current prices.
+- Don't make up precise details you aren't sure of, such as street addresses or phone numbers."""
 
 BRIEF_PROMPT = """You are a helpful AI assistant. Keep responses concise and direct:
 - Maximum 2-3 sentences

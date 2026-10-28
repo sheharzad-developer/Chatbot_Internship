@@ -8,9 +8,9 @@ A fully local AI chatbot: a **local LLM via Ollama**, a **local SQLite database*
 ## 🌟 Features
 
 - **🦙 Ollama**: Runs a local model (default `llama3.2`) — your data never leaves your machine
-- **🗄️ SQLite**: Chat sessions and messages stored in a local file (`data/chatbot.db`)
+- **🗄️ SQLite**: Chat sessions and messages stored in a local file (`backend/data/chatbot.db`)
 - **🧠 Conversation Memory**: Earlier turns in a session are sent to the model as context
-- **🏢 Multi-Tenant Agents**: Per-organization configs in `config/tenants/*.yaml`
+- **🏢 Multi-Tenant Agents**: Per-organization configs in `backend/config/tenants/*.yaml`
 - **📚 Document Knowledge**: RAG (Retrieval-Augmented Generation) system
 - **🌐 Web UI**: Plain HTML/CSS/JavaScript frontend with markdown formatting
 - **💬 Chat History**: Browse and restore past conversations
@@ -38,21 +38,22 @@ git clone https://github.com/sheharzad-developer/Chatbot_Internship.git
 cd Chatbot_Internship
 
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-local.txt
+.venv/bin/pip install -r backend/requirements.txt
 
 # Optional — defaults work out of the box
-cp .env.example .env
+cp backend/.env.example backend/.env
 ```
 
 ### 3️⃣ Start Backend
 ```bash
-.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8001
+cd backend
+../.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8001
 ```
 
 ### 4️⃣ Start Frontend
 ```bash
 # In new terminal
-.venv/bin/python run_frontend.py
+.venv/bin/python frontend/run_frontend.py
 ```
 
 ### 5️⃣ Access Application
@@ -66,23 +67,23 @@ cp .env.example .env
 - `index.html` - Chat interface with markdown rendering
 - `server.py` - Simple HTTP server with CORS support
 
-### Backend (`main.py`)
+### Backend (`backend/main.py`)
 - `/chat` or `/chat/ollama` - Chat with the local Ollama model (saved to SQLite)
 - `/chat/fast` - Chat without saving history
 - `/tenants/{id}/chat` - Tool-aware tenant agent
 - `/chat/history` - Retrieve chat sessions
 - `/chat/session/{id}` - Load or delete a specific conversation
 
-### Agents (`agents/`)
+### Agents (`backend/agents/`)
 - `ollama_agent.py` - Direct chat with the local model, with session history
 - `tool_aware_agent.py` - Multi-tenant agent with tool calling
 
-### Services (`services/`)
+### Services (`backend/services/`)
 - `ollama_service.py` - Ollama HTTP client
 - `rag_service.py` - Document search system
 - `tavily_search.py` - Web search integration
 
-### Database (`database/`)
+### Database (`backend/database/`)
 - `sqlite_db.py` - SQLite chat store (`chat_sessions` + `chat_messages` tables)
 
 ## 🔧 Environment Variables
@@ -102,7 +103,7 @@ LANGFUSE_PUBLIC_KEY=your_langfuse_public
 LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
-To use a different model, `ollama pull <model>` and set `OLLAMA_MODEL` (direct chat) and `llm.model` in `config/tenants/*.yaml` (tenant chat).
+To use a different model, `ollama pull <model>` and set `OLLAMA_MODEL` (direct chat) and `llm.model` in `backend/config/tenants/*.yaml` (tenant chat).
 
 ## 🛠️ Development
 

@@ -4,7 +4,7 @@ Streamlit version of the chatbot, for deploying to Streamlit Community Cloud.
 The local app talks to Ollama, which a cloud host can't reach, so this version
 calls a hosted API instead: Groq when GROQ_API_KEY is set, otherwise Gemini.
 Tenant system prompts and temperatures are read from the same
-config/tenants/*.yaml files the FastAPI backend uses.
+backend/config/tenants/*.yaml files the FastAPI backend uses.
 
 Run locally:  streamlit run streamlit_app/app.py
 """
@@ -17,7 +17,7 @@ import streamlit as st
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-TENANTS_DIR = ROOT / "config" / "tenants"
+TENANTS_DIR = ROOT / "backend" / "config" / "tenants"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -30,6 +30,33 @@ def get_secret(name, default=None):
     except FileNotFoundError:
         pass
     return os.getenv(name, default)
+
+
+# Same guidance backend/agents/tool_aware_agent.py adds when a tenant has no tools connected.
+# This app never connects tools, so without it the model role-plays the tools named in the
+# tenant prompt and invents their results.
+NO_TOOLS_GUIDANCE = (
+    "\n\nIMPORTANT: No tools, internal databases or enterprise systems are connected right now. "
+    "Answer from your general knowledge only. Never say you are using a tool, and never invent "
+    "search results, internal company figures, policy or compliance checks. If a question needs "
+    "internal company data, say you don't have access to it. When prices or costs would help "
+    "(hotels, flights, trips, products), do include typical price ranges from general knowledge, "
+    "label them as approximate, and suggest checking a live source for current prices."
+)
+FORMAT_GUIDANCE = (
+    "\n\nFormat answers in clean Markdown: a one-line intro, short headings or numbered lists "
+    "where they help, and tables only for real comparisons. Keep it concise."
+)
+
+
+def build_system_prompt(tenant):
+    return tenant["system_prompt"] + NO_TOOLS_GUIDANCE + FORMAT_GUIDANCE
+
+
+def escape_dollars(chunks):
+    """st.markdown treats text between $ signs as LaTeX, which garbles prices like "$200 – $400"."""
+    for chunk in chunks:
+        yield chunk.replace("$", "\\$")
 
 
 @st.cache_data
@@ -220,6 +247,19 @@ header[data-testid="stHeader"] { background: transparent; }
 }
 [data-testid="stChatMessageContent"] p, [data-testid="stChatMessageContent"] li { color: #fff; }
 [data-testid="stChatMessageContent"] code { background: rgba(0, 0, 0, 0.25); color: #fff; }
+[data-testid="stChatMessageContent"] h1, [data-testid="stChatMessageContent"] h2,
+[data-testid="stChatMessageContent"] h3, [data-testid="stChatMessageContent"] h4 {
+    color: #fff; font-size: 1.05rem; font-weight: 600; padding: 12px 0 4px;
+}
+[data-testid="stChatMessageContent"] strong { color: #fff; }
+[data-testid="stChatMessageContent"] table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+[data-testid="stChatMessageContent"] th, [data-testid="stChatMessageContent"] td {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 6px 10px;
+    color: #fff;
+    text-align: left;
+}
+[data-testid="stChatMessageContent"] th { background: rgba(255, 255, 255, 0.1); font-weight: 600; }
 
 /* Message input */
 [data-testid="stChatInput"] {
@@ -308,22 +348,24 @@ if not st.session_state.messages:
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        st.markdown(message["content"].replace("$", "\\$"))
 
 if prompt := st.chat_input("Ask me anything..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(prompt.replace("$", "\\$"))
 
     with st.chat_message("assistant"):
         try:
             reply = st.write_stream(
-                stream_reply(
-                    api_key,
-                    model,
-                    st.session_state.messages,
-                    tenant["system_prompt"],
-                    tenant.get("llm", {}).get("temperature", 0.7),
+                escape_dollars(
+                    stream_reply(
+                        api_key,
+                        model,
+                        st.session_state.messages,
+                        build_system_prompt(tenant),
+                        tenant.get("llm", {}).get("temperature", 0.7),
+                    )
                 )
             )
         except Exception as e:
@@ -331,4 +373,5 @@ if prompt := st.chat_input("Ask me anything..."):
             st.error(str(e))
             st.stop()
 
-    st.session_state.messages.append({"role": "assistant", "content": reply})
+    # Store the raw text (it is sent back to the model as history); escaping happens at render time
+    st.session_state.messages.append({"role": "assistant", "content": reply.replace("\\$", "$")})
