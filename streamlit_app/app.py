@@ -10,6 +10,10 @@ Run locally:  streamlit run streamlit_app/app.py
 """
 import json
 import os
+import sqlite3
+import uuid
+from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -20,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TENANTS_DIR = ROOT / "backend" / "config" / "tenants"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+HISTORY_LIMIT = 20
 
 
 def get_secret(name, default=None):
@@ -57,6 +62,139 @@ def escape_dollars(chunks):
     """st.markdown treats text between $ signs as LaTeX, which garbles prices like "$200 – $400"."""
     for chunk in chunks:
         yield chunk.replace("$", "\\$")
+
+
+# Chat history: same tables as backend/database/sqlite_db.py, but synchronous and without the
+# backend's dependencies, so it runs on Streamlit Community Cloud as-is.
+HISTORY_SCHEMA = """
+CREATE TABLE IF NOT EXISTS chat_sessions (
+    session_id  TEXT PRIMARY KEY,
+    tenant_id   TEXT NOT NULL DEFAULT 'default',
+    user_id     TEXT,
+    title       TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL,
+    metadata    TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+    id          TEXT NOT NULL UNIQUE,
+    session_id  TEXT NOT NULL REFERENCES chat_sessions(session_id) ON DELETE CASCADE,
+    role        TEXT NOT NULL,
+    content     TEXT NOT NULL,
+    timestamp   TEXT NOT NULL,
+    metadata    TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_session ON chat_messages(session_id, seq);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON chat_sessions(user_id, updated_at);
+"""
+
+
+@contextmanager
+def history_db():
+    """Open the history file, commit on success, and always close it."""
+    path = Path(get_secret("CHAT_HISTORY_DB", str(ROOT / "streamlit_app" / "data" / "chat_history.db")))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.executescript(HISTORY_SCHEMA)
+        with conn:
+            yield conn
+    finally:
+        conn.close()
+
+
+def create_session(user_id, tenant_id, first_message):
+    session_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+    title = first_message.strip().replace("\n", " ")
+    title = title[:45] + "…" if len(title) > 45 else title
+    with history_db() as conn:
+        conn.execute(
+            "INSERT INTO chat_sessions (session_id, tenant_id, user_id, title, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (session_id, tenant_id, user_id, title, now, now),
+        )
+    return session_id
+
+
+def add_message(session_id, role, content):
+    now = datetime.utcnow().isoformat()
+    with history_db() as conn:
+        conn.execute(
+            "INSERT INTO chat_messages (id, session_id, role, content, timestamp) VALUES (?, ?, ?, ?, ?)",
+            (str(uuid.uuid4()), session_id, role, content, now),
+        )
+        conn.execute("UPDATE chat_sessions SET updated_at = ? WHERE session_id = ?", (now, session_id))
+
+
+def list_sessions(user_id):
+    with history_db() as conn:
+        return conn.execute(
+            "SELECT session_id, tenant_id, title, updated_at FROM chat_sessions "
+            "WHERE user_id = ? ORDER BY updated_at DESC LIMIT ?",
+            (user_id, HISTORY_LIMIT),
+        ).fetchall()
+
+
+def get_session_tenant(session_id, user_id):
+    """Tenant of a saved chat, or None if it doesn't exist or belongs to someone else."""
+    with history_db() as conn:
+        row = conn.execute(
+            "SELECT tenant_id FROM chat_sessions WHERE session_id = ? AND user_id = ?",
+            (session_id, user_id),
+        ).fetchone()
+    return row["tenant_id"] if row else None
+
+
+def load_messages(session_id, user_id):
+    with history_db() as conn:
+        return [
+            {"role": m["role"], "content": m["content"]}
+            for m in conn.execute(
+                "SELECT m.role, m.content FROM chat_messages m "
+                "JOIN chat_sessions s ON s.session_id = m.session_id "
+                "WHERE m.session_id = ? AND s.user_id = ? ORDER BY m.seq",
+                (session_id, user_id),
+            )
+        ]
+
+
+def delete_session(session_id, user_id):
+    with history_db() as conn:
+        conn.execute("DELETE FROM chat_sessions WHERE session_id = ? AND user_id = ?", (session_id, user_id))
+
+
+def start_new_chat():
+    st.session_state.messages = []
+    st.session_state.session_id = None
+    st.query_params.pop("chat", None)
+
+
+def open_session(session_id, tenant_id, user_id):
+    st.session_state.messages = load_messages(session_id, user_id)
+    st.session_state.session_id = session_id
+    # Keep the open chat in the URL so a page refresh reopens it
+    st.query_params["chat"] = session_id
+    # Switch the organization picker to the chat's tenant without triggering a reset
+    st.session_state.tenant_id = tenant_id
+    st.session_state.tenant_picker = tenant_id
+
+
+def remove_session(session_id, user_id):
+    delete_session(session_id, user_id)
+    if st.session_state.get("session_id") == session_id:
+        start_new_chat()
+
+
+def format_when(iso_timestamp):
+    # Timestamps are UTC and the viewer's timezone is unknown, so show the day only
+    when = datetime.fromisoformat(iso_timestamp)
+    return "Today" if when.date() == datetime.utcnow().date() else when.strftime("%d %b")
 
 
 @st.cache_data
@@ -223,6 +361,20 @@ header[data-testid="stHeader"] { background: transparent; }
     color: #fff;
 }
 
+/* Chat history: one row per saved chat, the open one highlighted */
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] { gap: 6px; margin-bottom: -8px; }
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] .stButton button { justify-content: flex-start; }
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] .stButton button p {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.88rem;
+}
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:last-child .stButton button {
+    justify-content: center; background: transparent; border-color: transparent; padding: 0 4px;
+}
+[data-testid="stSidebar"] .stButton button[kind="primary"] {
+    background: rgba(255, 255, 255, 0.3);
+    border: 1px solid #ffffff;
+}
+
 /* Chat bubbles */
 [data-testid="stChatMessage"] { background: transparent; padding: 0; margin: 12px 0; width: 100%; }
 [data-testid="stChatMessage"] [data-testid^="stChatMessageAvatar"] { display: none; }
@@ -304,6 +456,23 @@ else:
     stream_reply = stream_gemini
 tenants = load_tenants()
 
+# There is no login, so each browser gets a random id kept in the URL (?uid=...).
+# History is filtered by it, so visitors of the public app only ever see their own chats.
+if "uid" not in st.query_params:
+    st.query_params["uid"] = uuid.uuid4().hex
+user_id = st.query_params["uid"]
+
+if "session_id" not in st.session_state:
+    # Fresh browser session (first visit or a page refresh): reopen the chat named in the URL
+    st.session_state.messages = []
+    st.session_state.session_id = None
+    chat_id = st.query_params.get("chat")
+    chat_tenant = get_session_tenant(chat_id, user_id) if chat_id else None
+    if chat_tenant in tenants:
+        open_session(chat_id, chat_tenant, user_id)
+    else:
+        st.query_params.pop("chat", None)
+
 with st.sidebar:
     st.markdown("### 🏢 Organizations")
     tenant_id = st.radio(
@@ -316,12 +485,35 @@ with st.sidebar:
             for t in tenants
         ],
         label_visibility="collapsed",
+        key="tenant_picker",
     )
     tenant = tenants[tenant_id]
     st.write("")
-    if st.button("🗑️ Clear Chat", use_container_width=True):
-        st.session_state.messages = []
-        st.rerun()
+    st.button("➕ New Chat", use_container_width=True, on_click=start_new_chat)
+
+    st.markdown("### 📜 Chat History")
+    sessions = list_sessions(user_id)
+    if not sessions:
+        st.caption("No saved chats yet.")
+    for s in sessions:
+        is_open = s["session_id"] == st.session_state.session_id
+        open_col, delete_col = st.columns([5, 1], vertical_alignment="center")
+        open_col.button(
+            s["title"],
+            key=f"open_{s['session_id']}",
+            help=f"{tenants.get(s['tenant_id'], {}).get('tenant_name', s['tenant_id'])} · {format_when(s['updated_at'])}",
+            type="primary" if is_open else "secondary",
+            use_container_width=True,
+            on_click=open_session,
+            args=(s["session_id"], s["tenant_id"], user_id),
+        )
+        delete_col.button(
+            "🗑️",
+            key=f"delete_{s['session_id']}",
+            help="Delete this chat",
+            on_click=remove_session,
+            args=(s["session_id"], user_id),
+        )
 
 st.markdown(
     f'<div class="chat-header"><div class="chat-title">💬 {tenant["tenant_name"]}</div>'
@@ -337,10 +529,10 @@ if not api_key:
     )
     st.stop()
 
-# Chat history lives in the browser session; switching tenant starts a new chat.
+# Switching organization starts a new chat (opening a saved chat sets tenant_id first, so it doesn't)
 if st.session_state.get("tenant_id") != tenant_id:
     st.session_state.tenant_id = tenant_id
-    st.session_state.messages = []
+    start_new_chat()
 
 if not st.session_state.messages:
     with st.chat_message("assistant"):
@@ -374,4 +566,13 @@ if prompt := st.chat_input("Ask me anything..."):
             st.stop()
 
     # Store the raw text (it is sent back to the model as history); escaping happens at render time
-    st.session_state.messages.append({"role": "assistant", "content": reply.replace("\\$", "$")})
+    reply = reply.replace("\\$", "$")
+    st.session_state.messages.append({"role": "assistant", "content": reply})
+
+    # Save the turn only once it succeeded, so failed requests don't leave half-saved chats
+    if not st.session_state.session_id:
+        st.session_state.session_id = create_session(user_id, tenant_id, prompt)
+        st.query_params["chat"] = st.session_state.session_id
+    add_message(st.session_state.session_id, "user", prompt)
+    add_message(st.session_state.session_id, "assistant", reply)
+    st.rerun()  # refresh the sidebar so the new or updated chat shows up
