@@ -1,7 +1,9 @@
-# Streamlit Community Cloud installs this file (it sits next to the app's entrypoint)
+# Streamlit Community Cloud installs this file (it sits next to the app's entrypoint, app.py)
 streamlit
 httpx
 pyyaml
-# PDF upload + retrieval (RAG)
+# PDF upload + retrieval on the Chat page
 pypdf
 scikit-learn
+# Domain RAG page: vector store + built-in ONNX embedding model (no PyTorch needed)
+chromadb==0.6.3

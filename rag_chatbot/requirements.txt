@@ -1,5 +1,0 @@
-streamlit
-chromadb==0.6.3
-sentence-transformers
-pypdf
-httpx
