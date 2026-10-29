@@ -4,3 +4,7 @@ primaryColor = "#ffffff"
 backgroundColor = "#6a5acd"
 secondaryBackgroundColor = "#5b4b9a"
 textColor = "#ffffff"
+
+[server]
+# Uploaded PDFs are also capped at 10 MB in app.py; this stops bigger files at the browser
+maxUploadSize = 10

@@ -2,3 +2,6 @@
 streamlit
 httpx
 pyyaml
+# PDF upload + retrieval (RAG)
+pypdf
+scikit-learn
