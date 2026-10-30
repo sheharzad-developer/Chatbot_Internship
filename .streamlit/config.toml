@@ -1,9 +1,10 @@
 [theme]
-base = "dark"
-primaryColor = "#ffffff"
-backgroundColor = "#6a5acd"
-secondaryBackgroundColor = "#5b4b9a"
-textColor = "#ffffff"
+# Soft light theme; keep in sync with streamlit_app/theme.py
+base = "light"
+primaryColor = "#5865D8"
+backgroundColor = "#F5F6F8"
+secondaryBackgroundColor = "#ECEEF2"
+textColor = "#1F2430"
 
 [server]
 # Uploaded PDFs are also capped at 10 MB in app.py; this stops bigger files at the browser

@@ -1,12 +1,15 @@
 """
-📚 Domain RAG page: answers only from the PDFs in documents/ (indexed by ingest.py).
+Domain RAG page: answers only from the PDFs in documents/ (indexed by ingest.py).
 Questions outside them get: "The resource has no information about this."
 
 LLM: Ollama when it's running locally, otherwise Groq (or Gemini) with the chat page's key.
 """
+import html
+
 import streamlit as st
 
 from llm import get_secret, stream_gemini, stream_groq
+from theme import icon, page_header
 from rag import (
     DOMAIN, NO_INFO, OLLAMA_MODEL, answer, build_knowledge_base, indexed_pdfs, is_no_info,
     load_collection, ollama_ready, pdf_files, stream_ollama,
@@ -61,14 +64,16 @@ def rebuild():
 def show_sources(sources):
     if not sources:
         return
-    with st.expander(f"📚 Sources ({len(sources)})"):
+    with st.expander(f"Sources ({len(sources)})", icon=":material/description:"):
         for s in sources:
             st.markdown(f"**{md(s['source'])} · page {s['page']}** (similarity {s['similarity']:.2f})")
             st.caption(md(s["text"][:400] + ("…" if len(s["text"]) > 400 else "")))
 
 
-st.markdown('<div class="app-header"><h1>📚 Domain RAG</h1></div>', unsafe_allow_html=True)
-st.caption(f"Ask questions about **{DOMAIN}**. Answers come only from the PDFs in `documents/`.")
+st.markdown(
+    page_header("Domain RAG", f"Answers about {html.escape(DOMAIN)}, only from the indexed PDFs", "book"),
+    unsafe_allow_html=True,
+)
 
 pdfs_on_disk = [p.name for p in pdf_files()]
 try:
@@ -86,17 +91,19 @@ except Exception:
 llm_label, stream_llm = pick_llm()
 
 with st.sidebar:
-    st.markdown("### 📚 Knowledge base")
+    st.markdown("### Knowledge base")
     st.markdown(f"**Domain:** {DOMAIN}  \n**Chunks indexed:** {collection.count()}")
     for name in pdf_names:
-        st.markdown(f"📄 {md(name)}")
+        st.markdown(f"<div class='doc-name'>{icon('file', 16)}<span>{html.escape(name)}</span></div>",
+                    unsafe_allow_html=True)
     if sorted(pdfs_on_disk) != pdf_names:
-        st.warning("`documents/` has changed since the last build.")
-    if st.button("🔄 Rebuild knowledge base", use_container_width=True):
+        st.warning("`documents/` has changed since the last build.", icon=":material/sync_problem:")
+    if st.button("Rebuild index", icon=":material/refresh:", use_container_width=True,
+                 help="Re-read every PDF in documents/ and rebuild the knowledge base"):
         if rebuild():
             st.rerun()
     st.markdown(f"**LLM:** {llm_label or 'none available'}")
-    if st.button("🗑️ Clear chat", use_container_width=True, key="clear_domain_chat"):
+    if st.button("Clear chat", icon=":material/delete_sweep:", use_container_width=True, key="clear_domain_chat"):
         st.session_state.domain_messages = []
         st.rerun()
 

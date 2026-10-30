@@ -1,5 +1,5 @@
 """
-💬 Chat page: the multi-tenant chatbot (history, PDF uploads, web search, copy).
+Chat page: the multi-tenant chatbot (history, PDF uploads, web search, copy).
 
 Calls a hosted API, so it also runs on Streamlit Community Cloud: Groq when GROQ_API_KEY is
 set, otherwise Gemini. Tenant system prompts and temperatures are read from the same
@@ -26,6 +26,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 
 from llm import get_secret, stream_gemini, stream_groq
+from theme import icon, page_header
 
 ROOT = Path(__file__).resolve().parent.parent
 TENANTS_DIR = ROOT / "backend" / "config" / "tenants"
@@ -483,16 +484,23 @@ COPY_BUTTON = """
 <style>
   body { margin: 0; background: transparent; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
   button {
-    background: rgba(255, 255, 255, 0.1); color: #fff; cursor: pointer;
-    border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px;
-    padding: 4px 10px; font-size: 13px; transition: background 0.2s;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: transparent; color: #6B7280; cursor: pointer;
+    border: 1px solid #E3E6EB; border-radius: 8px;
+    padding: 4px 10px; font-size: 12.5px; transition: background 0.15s, color 0.15s;
   }
-  button:hover { background: rgba(255, 255, 255, 0.22); }
+  button:hover { background: #F5F6F8; color: #1F2430; }
+  button.done { color: #2F8F63; border-color: #BFE3D0; }
 </style>
-<button id="copy" title="Copy this answer">📋 Copy</button>
+<button id="copy" title="Copy this answer"></button>
 <script>
   const text = __TEXT__;
   const button = document.getElementById("copy");
+  const svg = (paths) => '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>';
+  const COPY = svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>') + "Copy";
+  const COPIED = svg('<path d="M20 6 9 17l-5-5"/>') + "Copied";
+  button.innerHTML = COPY;
   button.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(text);
@@ -505,8 +513,9 @@ COPY_BUTTON = """
       document.execCommand("copy");
       area.remove();
     }
-    button.textContent = "✓ Copied";
-    setTimeout(() => (button.textContent = "📋 Copy"), 1500);
+    button.innerHTML = COPIED;
+    button.classList.add("done");
+    setTimeout(() => { button.innerHTML = COPY; button.classList.remove("done"); }, 1500);
   });
 </script>
 """
@@ -543,12 +552,12 @@ def show_sources(sources, search_query=None):
     docs = [s for s in sources if s.get("type") != "web"]
     web = [s for s in sources if s.get("type") == "web"]
     if docs:
-        with st.expander(f"📚 Sources ({len(docs)})"):
+        with st.expander(f"Sources ({len(docs)})", icon=":material/description:"):
             for i, s in enumerate(docs, start=1):
                 snippet = s["text"][:300] + ("…" if len(s["text"]) > 300 else "")
                 st.markdown(f"**[{s.get('n', i)}] {s['name']} · page {s['page']}**  \n{snippet}".replace("$", "\\$"))
     if web:
-        with st.expander(f"🌐 Web sources ({len(web)})"):
+        with st.expander(f"Web sources ({len(web)})", icon=":material/public:"):
             if search_query:
                 st.caption(f"Searched: {search_query}")
             for i, s in enumerate(web, start=1):
@@ -573,13 +582,10 @@ def load_tenants():
 
 
 WELCOME = (
-    "👋 Welcome to the Multi-Tenant Chatbot!\n\n"
-    "**Features:**  \n"
-    "🏢 Multi-tenant system prompts  \n"
-    "⚡ Fast hosted LLM  \n"
-    "🧠 Conversation memory  \n"
-    "📄 Upload PDFs and ask questions about them\n\n"
-    "Pick an organization in the sidebar and ask me anything."
+    "**Welcome!** Pick an organization in the sidebar and ask me anything.\n\n"
+    "- Upload PDFs and ask questions about them, with cited pages\n"
+    "- Questions about recent events are answered with a web search\n"
+    "- Your chats are saved in the sidebar"
 )
 
 
@@ -593,7 +599,10 @@ def ingest_uploads(user_id):
     st.session_state.upload_report = (added, errors)
     st.session_state.uploader_n += 1
 
-st.markdown('<div class="app-header"><h1>🤖 AI Chatbot</h1></div>', unsafe_allow_html=True)
+st.markdown(
+    page_header("AI Chatbot", "Multi-tenant assistant with document Q&amp;A and web search", "chat"),
+    unsafe_allow_html=True,
+)
 
 if get_secret("GROQ_API_KEY"):
     api_key = get_secret("GROQ_API_KEY")
@@ -631,14 +640,14 @@ if "session_id" not in st.session_state:
         st.query_params.pop("chat", None)
 
 with st.sidebar:
-    st.markdown("### 🏢 Organizations")
+    st.markdown("### Organizations")
     tenant_id = st.radio(
         "Organization",
         options=list(tenants),
         format_func=lambda t: tenants[t]["tenant_name"],
         captions=[
             f"{tenants[t].get('description', '')}  \n"
-            f"🌡️ temp {tenants[t].get('llm', {}).get('temperature', 0.7)} · ⚡ {provider}"
+            f"Temperature {tenants[t].get('llm', {}).get('temperature', 0.7)} · {provider}"
             for t in tenants
         ],
         label_visibility="collapsed",
@@ -646,9 +655,9 @@ with st.sidebar:
     )
     tenant = tenants[tenant_id]
     st.write("")
-    st.button("➕ New Chat", use_container_width=True, on_click=start_new_chat)
+    st.button("New chat", icon=":material/add:", use_container_width=True, on_click=start_new_chat)
     web_enabled = st.toggle(
-        "🌐 Web search",
+        ":material/language: Web search",
         value=bool(tavily_key),
         disabled=not tavily_key,
         help="Searches the web automatically when a question needs current information (news, scores, prices...).",
@@ -656,7 +665,7 @@ with st.sidebar:
     if not tavily_key:
         st.caption("Add `TAVILY_API_KEY` to the app's secrets to enable web search (free at tavily.com).")
 
-    st.markdown("### 📄 Documents")
+    st.markdown("### Documents")
     st.session_state.setdefault("uploader_n", 0)
     st.file_uploader(
         f"Upload PDFs (up to {MAX_PDF_MB} MB each) and ask questions about them",
@@ -675,18 +684,19 @@ with st.sidebar:
     for d in docs:
         name_col, delete_col = st.columns([5, 1], vertical_alignment="center")
         name_col.markdown(
-            f"<div class='doc-name'>📄 {html.escape(d['name'])}<br><small>{d['pages']} pages</small></div>",
+            f"<div class='doc-name'>{icon('file', 16)}<span>{html.escape(d['name'])}<br>"
+            f"<small>{d['pages']} pages</small></span></div>",
             unsafe_allow_html=True,
         )
         delete_col.button(
-            "🗑️",
+            ":material/delete:",
             key=f"delete_doc_{d['doc_id']}",
             help="Delete this document",
             on_click=delete_document,
             args=(d["doc_id"], user_id),
         )
 
-    st.markdown("### 📜 Chat History")
+    st.markdown("### Chat history")
     sessions = list_sessions(user_id)
     if not sessions:
         st.caption("No saved chats yet.")
@@ -703,7 +713,7 @@ with st.sidebar:
             args=(s["session_id"], s["tenant_id"], user_id),
         )
         delete_col.button(
-            "🗑️",
+            ":material/delete:",
             key=f"delete_{s['session_id']}",
             help="Delete this chat",
             on_click=remove_session,
@@ -711,8 +721,8 @@ with st.sidebar:
         )
 
 st.markdown(
-    f'<div class="chat-header"><div class="chat-title">💬 {tenant["tenant_name"]}</div>'
-    f'<div class="model-pill">⚡ {provider} · {model}</div></div>',
+    f'<div class="chat-header"><div class="chat-title">{html.escape(tenant["tenant_name"])}</div>'
+    f'<div class="model-pill">{provider} · {html.escape(model)}</div></div>',
     unsafe_allow_html=True,
 )
 
@@ -758,13 +768,13 @@ if prompt := st.chat_input(placeholder):
                 with st.spinner("Thinking..."):
                     search_query = plan_web_search(st.session_state.messages, docs)
                 if search_query:
-                    with st.spinner(f"🌐 Searching the web: {search_query}"):
+                    with st.spinner(f"Searching the web: {search_query}"):
                         web_results = web_search(search_query)
             except Exception as e:
                 # Search is a bonus: if it fails, answer without it rather than failing the message
                 status = getattr(getattr(e, "response", None), "status_code", None)
                 reason = {401: "invalid Tavily API key", 429: "rate limit reached"}.get(status, e.__class__.__name__)
-                search_note = f"⚠️ Web search unavailable ({reason}), so this answer doesn't include current information."
+                search_note = f":material/warning: Web search unavailable ({reason}), so this answer doesn't include current information."
                 st.caption(search_note)
                 search_query, web_results = None, []
         sources = sources + web_results
